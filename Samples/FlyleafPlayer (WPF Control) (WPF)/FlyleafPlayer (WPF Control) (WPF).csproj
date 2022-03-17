@@ -2,7 +2,7 @@
 
   <PropertyGroup>
     <OutputType>WinExe</OutputType>
-    <TargetFramework>net6.0-windows</TargetFramework>
+    <TargetFramework>net5.0-windows</TargetFramework>
     <RootNamespace>FlyleafPlayer</RootNamespace>
     <UseWPF>true</UseWPF>
     <AssemblyName>FlyleafPlayer</AssemblyName>
@@ -22,6 +22,10 @@
 
   <ItemGroup>
     <_DeploymentManifestIconFile Remove="Flyleaf.ico" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="System.Runtime.CompilerServices.Unsafe" Version="6.0.0" />
   </ItemGroup>
 
   <ItemGroup>
