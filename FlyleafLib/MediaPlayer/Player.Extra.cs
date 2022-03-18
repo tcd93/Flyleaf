@@ -1,5 +1,6 @@
 ﻿using System;
 using System.IO;
+using System.Collections.Generic;
 
 using FlyleafLib.MediaFramework.MediaDecoder;
 using FlyleafLib.MediaFramework.MediaDemuxer;
@@ -100,6 +101,33 @@ namespace FlyleafLib.MediaPlayer
 
             if (allowIdleMode)
                 Config.Player.ActivityMode = true;
+
+            IsOpenFileDialogOpen = false;
+        }
+
+        public void OpenFromFolderDialog()
+        {
+            IsOpenFileDialogOpen = true;
+            bool allowIdleMode = false;
+
+            if (Config.Player.ActivityMode)
+            {
+                allowIdleMode = true;
+                Config.Player.ActivityMode = false;
+            }
+
+            using (System.Windows.Forms.FolderBrowserDialog dialog = new())
+            {
+                if (dialog.ShowDialog() == System.Windows.Forms.DialogResult.OK)
+                {
+                    Playlist.Play(FindMovFilesInPath(dialog.SelectedPath));
+                }
+            }
+
+            if (allowIdleMode)
+            {
+                Config.Player.ActivityMode = true;
+            }
 
             IsOpenFileDialogOpen = false;
         }

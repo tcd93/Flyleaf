@@ -408,6 +408,8 @@ namespace FlyleafLib.MediaPlayer
 
                 case KeyBindingAction.OpenFromFileDialog:
                     return player.OpenFromFileDialog;
+                case KeyBindingAction.OpenFromFolderDialog:
+                    return player.OpenFromFolderDialog;
 
                 case KeyBindingAction.CopyToClipboard:
                     return player.CopyToClipboard;
@@ -547,7 +549,7 @@ namespace FlyleafLib.MediaPlayer
         AudioDelayAdd, AudioDelayAdd2, AudioDelayRemove, AudioDelayRemove2, ToggleMute, VolumeUp, VolumeDown,
         SubtitlesDelayAdd, SubtitlesDelayAdd2, SubtitlesDelayRemove, SubtitlesDelayRemove2,
 
-        CopyToClipboard, OpenFromClipboard, OpenFromFileDialog,
+        CopyToClipboard, OpenFromClipboard, OpenFromFileDialog, OpenFromFolderDialog,
         Stop, Pause, Play, TogglePlayPause, ToggleReversePlayback, Flush,
         TakeSnapshot,
         NormalScreen, FullScreen, ToggleFullScreen,
