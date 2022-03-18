@@ -6,7 +6,7 @@ namespace FlyleafLib.MediaPlayer
     public class Playlist
     {
         private readonly Player player;
-        private static List<string> playlist;
+        private static List<string> playlist = new();
 
         private readonly Random random = new();
 
