@@ -162,6 +162,15 @@ namespace FlyleafLib.MediaPlayer
                 Play();
         }
 
+        public void ToggleShuffle()
+        {
+            if (Playlist is null)
+            {
+                return;
+            }
+            Playlist.Shuffled = !Playlist.Shuffled;
+        }
+
         public void ToggleReversePlayback()
         {
             ReversePlayback = !ReversePlayback;

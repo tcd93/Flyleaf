@@ -29,6 +29,7 @@ namespace FlyleafLib.MediaPlayer
         public ICommand Pause                   { get; set; }
         public ICommand Stop                    { get; set; }
         public ICommand TogglePlayPause         { get; set; }
+        public ICommand ToggleShuffle           { get; set; }
 
         public ICommand SeekBackward            { get; set; }
         public ICommand SeekBackward2           { get; set; }
@@ -78,6 +79,7 @@ namespace FlyleafLib.MediaPlayer
             Play = new RelayCommandSimple(player.Play);
             Pause                   = new RelayCommandSimple(player.Pause);
             TogglePlayPause         = new RelayCommandSimple(player.TogglePlayPause);
+            ToggleShuffle           = new RelayCommandSimple(player.ToggleShuffle);
             Stop                    = new RelayCommandSimple(player.Stop);
 
             SeekBackward            = new RelayCommandSimple(player.SeekBackward);

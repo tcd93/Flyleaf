@@ -33,7 +33,7 @@
                                     </Storyboard>
                                 </ResourceDictionary>
                             </ControlTemplate.Resources>
-                            
+
                             <!--CONTENT HERE-->
                             <Grid x:Name="PART_ContextMenuOwner" ContextMenu="{StaticResource PopUpMenu}">
 
@@ -106,7 +106,7 @@
                                         <Grid Grid.Row="1" Margin="10,0,10,5">
                                             <Grid.Resources>
                                                 <ResourceDictionary>
-                                                    <Style x:Key="IconButton" TargetType="Button" BasedOn="{StaticResource MaterialDesignIconButton}">
+                                                    <Style x:Key="IconButton" TargetType="ButtonBase" BasedOn="{StaticResource MaterialDesignIconButton}">
                                                         <Setter Property="Width" Value="32"/>
                                                         <Setter Property="Height" Value="32"/>
                                                         <Setter Property="Focusable" Value="False"/>
@@ -115,6 +115,7 @@
                                             </Grid.Resources>
 
                                             <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="auto"/>
                                                 <ColumnDefinition Width="auto"/>
                                                 <ColumnDefinition Width="auto"/>
                                                 <ColumnDefinition Width="*"/>
@@ -138,8 +139,24 @@
                                                 </Button.Style>
                                             </Button>
 
+                                            <!-- Shuffle playlist button -->
+                                            <ToggleButton Grid.Column="1" Command="{Binding Player.Commands.ToggleShuffle}">
+                                                <ToggleButton.Style>
+                                                    <Style TargetType="ToggleButton" BasedOn="{StaticResource IconButton}">
+                                                        <Setter Property="Content" Value="{materialDesign:PackIcon Kind=ShuffleDisabled}"/>
+                                                        <Setter Property="Foreground" Value="{StaticResource MaterialDesignCheckBoxOff}"/>
+                                                        <Style.Triggers>
+                                                            <Trigger Property="IsChecked" Value="True">
+                                                                <Setter Property="Foreground" Value="{DynamicResource PrimaryHueMidBrush}" />
+                                                                <Setter Property="Content" Value="{materialDesign:PackIcon Kind=ShuffleVariant}"/>
+                                                            </Trigger>
+                                                        </Style.Triggers>
+                                                    </Style>
+                                                </ToggleButton.Style>
+                                            </ToggleButton>
+
                                             <!--Subtitles Button (Currently not used)-->
-                                            <Button Command="{Binding ShowSubtitlesMenu}" x:Name="PART_ContextMenuOwner_Subtitles" Grid.Column="1" Foreground="{DynamicResource SecondaryHueMidBrush}" Content="{materialDesign:PackIcon Kind=CcOutline}">
+                                            <Button Command="{Binding ShowSubtitlesMenu}" x:Name="PART_ContextMenuOwner_Subtitles" Grid.Column="2" Foreground="{DynamicResource SecondaryHueMidBrush}" Content="{materialDesign:PackIcon Kind=CcOutline}">
                                                 <Button.Style>
                                                     <Style TargetType="Button" BasedOn="{StaticResource IconButton}">
                                                         <Setter Property="ContextMenu">
@@ -273,7 +290,7 @@
                                             </Button>
 
                                             <!--Quality + Movies Title-->
-                                            <StackPanel Grid.Column="2" Orientation="Horizontal">
+                                            <StackPanel Grid.Column="3" Orientation="Horizontal">
                                                 <Button x:Name="PART_ContextMenuOwner_Video" Command="{Binding ShowVideoMenu}">
                                                     <Button.Style>
                                                         <Style TargetType="Button" BasedOn="{StaticResource IconButton}">
@@ -421,7 +438,7 @@
                                             </StackPanel>
 
                                             <!--Volume Button (Mute/Unmute)-->
-                                            <Button Grid.Column="3" Foreground="{DynamicResource SecondaryHueMidBrush}" Command="{Binding Player.Commands.ToggleMute}">
+                                            <Button Grid.Column="4" Foreground="{DynamicResource SecondaryHueMidBrush}" Command="{Binding Player.Commands.ToggleMute}">
                                                 <Button.Style>
                                                     <Style TargetType="Button" BasedOn="{StaticResource IconButton}">
                                                         <Setter Property="Content" Value="{materialDesign:PackIcon Kind=VolumeHigh}"/>
@@ -444,13 +461,13 @@
                                             </Button>
 
                                             <!--Volume Slider (Decibel)-->
-                                            <Slider Grid.Column="4" Style="{DynamicResource FlyleafSlider}" Foreground="{DynamicResource SecondaryHueMidBrush}" Focusable="False" Margin="0,0,6,6" Width="100" VerticalAlignment="Bottom" Minimum="0" Maximum="{Binding Config.Player.VolumeMax, Mode=OneWay}" Value="{Binding Player.Audio.Volume}"/>
+                                            <Slider Grid.Column="5" Style="{DynamicResource FlyleafSlider}" Foreground="{DynamicResource SecondaryHueMidBrush}" Focusable="False" Margin="0,0,6,6" Width="100" VerticalAlignment="Bottom" Minimum="0" Maximum="{Binding Config.Player.VolumeMax, Mode=OneWay}" Value="{Binding Player.Audio.Volume}"/>
 
                                             <!--Open Settings Button-->
-                                            <Button Grid.Column="5" Style="{StaticResource IconButton}" Content="{materialDesign:PackIcon Kind=SettingsOutline}" Command="{Binding OpenSettings}"/>
+                                            <Button Grid.Column="6" Style="{StaticResource IconButton}" Content="{materialDesign:PackIcon Kind=SettingsOutline}" Command="{Binding OpenSettings}"/>
 
                                             <!--Toggle Fullscreen Button-->
-                                            <Button Grid.Column="6" Command="{Binding Player.Commands.ToggleFullScreen}">
+                                            <Button Grid.Column="7" Command="{Binding Player.Commands.ToggleFullScreen}">
                                                 <Button.Style>
                                                     <Style TargetType="Button" BasedOn="{StaticResource IconButton}">
                                                         <Setter Property="Content" Value="{materialDesign:PackIcon Kind=Fullscreen}"/>
