@@ -20,11 +20,6 @@ namespace FlyleafLib.MediaPlayer
 
         public void Play(List<string> files)
         {
-            if (player.IsPlaying)
-            {
-                player.Stop();
-            }
-
             if (files is not null && files.Count > 0)
             {
                 playlist = files;
@@ -41,9 +36,19 @@ namespace FlyleafLib.MediaPlayer
             }
         }
 
-        private void PlayNext()
+        public void PlayNext()
         {
-            player.OpenAsync(Shuffled ? RandomPop() : Dequeue());
+            if (player.IsPlaying)
+            {
+                player.Stop();
+            }
+            lock (playlist) {
+                if (playlist.Count == 0)
+                {
+                    return;
+                }
+                player.OpenAsync(Shuffled ? RandomPop() : Dequeue());
+            }
         }
 
         private string Dequeue()
