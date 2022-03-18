@@ -7,6 +7,7 @@
              xmlns:sys="clr-namespace:System;assembly=mscorlib"
              xmlns:local="clr-namespace:FlyleafLib.Controls.WPF"
              xmlns:fl="clr-namespace:FlyleafLib.Controls.WPF;assembly=FlyleafLib"
+             xmlns:properties="clr-namespace:FlyleafLib.Controls.WPF.Properties"
              xmlns:materialDesign="http://materialdesigninxaml.net/winfx/xaml/themes"
              
              mc:Ignorable="d" d:DesignHeight="300" d:DesignWidth="600"
@@ -140,13 +141,13 @@
                                             </Button>
 
                                             <!-- Shuffle playlist button -->
-                                            <ToggleButton Grid.Column="1" Command="{Binding Player.Commands.ToggleShuffle}">
+                                            <ToggleButton Grid.Column="1" IsChecked="{Binding Source={x:Static properties:Settings.Default}, Path=Shuffled}">
                                                 <ToggleButton.Style>
                                                     <Style TargetType="ToggleButton" BasedOn="{StaticResource IconButton}">
                                                         <Setter Property="Content" Value="{materialDesign:PackIcon Kind=ShuffleDisabled}"/>
                                                         <Setter Property="Foreground" Value="{StaticResource MaterialDesignCheckBoxOff}"/>
                                                         <Style.Triggers>
-                                                            <Trigger Property="IsChecked" Value="True">
+                                                            <Trigger Property="IsChecked" Value="true">
                                                                 <Setter Property="Foreground" Value="{DynamicResource PrimaryHueMidBrush}" />
                                                                 <Setter Property="Content" Value="{materialDesign:PackIcon Kind=ShuffleVariant}"/>
                                                             </Trigger>

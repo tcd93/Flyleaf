@@ -215,6 +215,7 @@ namespace FlyleafLib.Controls.WPF
             popUpMenuSubtitles  = ((FrameworkElement)Template.FindName("PART_ContextMenuOwner_Subtitles", this))?.ContextMenu;
             popUpMenuVideo      = ((FrameworkElement)Template.FindName("PART_ContextMenuOwner_Video", this))?.ContextMenu;
             Subtitles           = (TextBlock) Template.FindName("PART_Subtitles", this);
+            Application.Current.MainWindow.Closed += MainWindow_Closed;
 
             var dialogSettings  = (DialogHost)Template.FindName("PART_DialogSettings", this);
             if (dialogSettings != null)
@@ -335,6 +336,12 @@ namespace FlyleafLib.Controls.WPF
             Raise(null);
             settings?.Raise(null);
         }
+
+        private void MainWindow_Closed(object sender, EventArgs e)
+        {
+            Properties.Settings.Default.Save(); // save settings, see https://docs.microsoft.com/en-us/archive/blogs/patrickdanino/user-settings-in-wpf
+        }
+
         private void InitializePlayer(Player oldPlayer = null)
         {
             // Updates the key binding actions with the new instances in case of swap or initial load
