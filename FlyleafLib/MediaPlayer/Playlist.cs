@@ -6,7 +6,10 @@ namespace FlyleafLib.MediaPlayer
     public class Playlist
     {
         private readonly Player player;
-        private static List<string> playlist = new();
+
+        private string current;
+        private List<string> playlist = new();
+        private readonly Stack<string> previous = new(); // played list
 
         private readonly Random random = new();
 
@@ -24,7 +27,8 @@ namespace FlyleafLib.MediaPlayer
             {
                 playlist = files;
                 player.Log.Info($"[Playlist] Total items in queue: {playlist.Count}");
-                PlayNext();
+                current = Dequeue();
+                player.OpenAsync(current);
             }
         }
 
@@ -43,11 +47,31 @@ namespace FlyleafLib.MediaPlayer
                 player.Stop();
             }
             lock (playlist) {
-                if (playlist.Count == 0)
+                if (playlist.Count == 0 || current is null)
                 {
                     return;
                 }
-                player.OpenAsync(Shuffled ? RandomPop() : Dequeue());
+                previous.Push(current); // archive current item
+                current = Shuffled ? RandomPop() : Dequeue();
+                player.OpenAsync(current);
+            }
+        }
+
+        public void PlayPrevious()
+        {
+            if (previous.Count == 0)
+            {
+                return;
+            }
+            lock (previous)
+            {
+                if (previous.Count == 0 || current is null)
+                {
+                    return;
+                }
+                playlist.Insert(0, current); // put current item back into front queue
+                current = previous.Pop();
+                player.OpenAsync(current);
             }
         }
 

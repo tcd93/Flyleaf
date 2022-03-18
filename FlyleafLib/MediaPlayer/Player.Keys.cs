@@ -333,6 +333,7 @@ namespace FlyleafLib.MediaPlayer
             Add(Key.Play,               KeyBindingAction.TogglePlayPause);
 
             Add(Key.PageDown,           KeyBindingAction.PlayNext);
+            Add(Key.PageUp,             KeyBindingAction.PlayPrevious);
 
             Add(Key.A,                  KeyBindingAction.ToggleAudio, false, false, true);
             Add(Key.S,                  KeyBindingAction.ToggleSubtitles, false, false, true);
@@ -431,6 +432,9 @@ namespace FlyleafLib.MediaPlayer
                 case KeyBindingAction.PlayNext:
                     return player.Playlist.PlayNext;
 
+                case KeyBindingAction.PlayPrevious:
+                    return player.Playlist.PlayPrevious;
+
                 case KeyBindingAction.TogglePlayPause:
                     return player.TogglePlayPause;
 
@@ -513,6 +517,7 @@ namespace FlyleafLib.MediaPlayer
             //{ KeyBindingAction.ToggleReversePlayback },
             { KeyBindingAction.Play },
             { KeyBindingAction.PlayNext },
+            { KeyBindingAction.PlayPrevious },
             { KeyBindingAction.Pause },
             //{ KeyBindingAction.Stop },
             { KeyBindingAction.Flush },
@@ -556,7 +561,7 @@ namespace FlyleafLib.MediaPlayer
         SubtitlesDelayAdd, SubtitlesDelayAdd2, SubtitlesDelayRemove, SubtitlesDelayRemove2,
 
         CopyToClipboard, OpenFromClipboard, OpenFromFileDialog, OpenFromFolderDialog,
-        Stop, Pause, Play, PlayNext, TogglePlayPause, ToggleReversePlayback, Flush,
+        Stop, Pause, Play, PlayNext, PlayPrevious, TogglePlayPause, ToggleReversePlayback, Flush,
         TakeSnapshot,
         NormalScreen, FullScreen, ToggleFullScreen,
 
