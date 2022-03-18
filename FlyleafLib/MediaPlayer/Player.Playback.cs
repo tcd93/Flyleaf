@@ -122,6 +122,7 @@ namespace FlyleafLib.MediaPlayer
                                 status = Status.Paused;
                         }
 
+                        OnPlaybackCompleted(stoppedWithError ? "Playback stopped unexpectedly" : null);
                         if (CanDebug) Log.Debug($"[SCREAMER] Finished (Status: {Status}, Error: {(stoppedWithError ? "Playback stopped unexpectedly" : "")})");
 
                         UI(() =>
