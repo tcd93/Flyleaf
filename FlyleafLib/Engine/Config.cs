@@ -197,7 +197,7 @@ namespace FlyleafLib
             /// Forces CurTime/SeekBackward/SeekForward to seek accurate on video
             /// </summary>
             public bool     SeekAccurate                { get => _SeekAccurate; set => Set(ref _SeekAccurate, value); }
-            bool _SeekAccurate;
+            bool _SeekAccurate = true;
 
             /// <summary>
             /// Snapshot encoding will be used (valid formats bmp, png, jpg/jpeg)
