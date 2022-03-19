@@ -23,6 +23,20 @@ namespace FlyleafPlayer
 
         public MainWindow()
         {
+            // detect command line input
+            string[] arguments = Environment.GetCommandLineArgs();
+            if (arguments.Length > 1 && arguments[1] != String.Empty)
+            {
+                string workingDir = AppDomain.CurrentDomain.BaseDirectory;
+                using (System.Diagnostics.EventLog eventLog = new("Application"))
+                {
+                    eventLog.Source = "Application";
+                    eventLog.WriteEntry($"Working directory: {workingDir}, File: {arguments[1]}", System.Diagnostics.EventLogEntryType.Information, 1001, 1);
+                }
+                // set working directory to installed dir, so the app can reference external libraries
+                Directory.SetCurrentDirectory(workingDir);
+            }
+
             // Ensures that we have enough worker threads to avoid the UI from freezing or not updating on time
             ThreadPool.GetMinThreads(out int workers, out int ports);
             ThreadPool.SetMinThreads(workers + 6, ports + 6);
