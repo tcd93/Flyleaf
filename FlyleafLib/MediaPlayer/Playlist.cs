@@ -13,8 +13,6 @@ namespace FlyleafLib.MediaPlayer
 
         private readonly Random random = new();
 
-        public bool Shuffled { get; set; }
-
         public Playlist(Player player)
         {
             this.player = player;
@@ -52,7 +50,7 @@ namespace FlyleafLib.MediaPlayer
                     return;
                 }
                 previous.Push(current); // archive current item
-                current = Shuffled ? RandomPop() : Dequeue();
+                current = Properties.Settings.Default.Shuffled ? RandomPop() : Dequeue();
                 player.OpenAsync(current);
             }
         }

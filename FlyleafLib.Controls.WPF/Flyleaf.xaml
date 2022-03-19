@@ -7,7 +7,7 @@
              xmlns:sys="clr-namespace:System;assembly=mscorlib"
              xmlns:local="clr-namespace:FlyleafLib.Controls.WPF"
              xmlns:fl="clr-namespace:FlyleafLib.Controls.WPF;assembly=FlyleafLib"
-             xmlns:properties="clr-namespace:FlyleafLib.Controls.WPF.Properties"
+             xmlns:properties="clr-namespace:FlyleafLib.Properties;assembly=FlyleafLib"
              xmlns:materialDesign="http://materialdesigninxaml.net/winfx/xaml/themes"
              
              mc:Ignorable="d" d:DesignHeight="300" d:DesignWidth="600"
