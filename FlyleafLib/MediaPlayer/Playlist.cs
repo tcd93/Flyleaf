@@ -25,7 +25,7 @@ namespace FlyleafLib.MediaPlayer
             {
                 playlist = files;
                 player.Log.Info($"[Playlist] Total items in queue: {playlist.Count}");
-                current = Dequeue();
+                current = Properties.Settings.Default.Shuffled ? RandomPop() : Dequeue();
                 player.OpenAsync(current);
             }
         }
