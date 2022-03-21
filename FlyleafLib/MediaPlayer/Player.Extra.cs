@@ -39,7 +39,7 @@ namespace FlyleafLib.MediaPlayer
             if (!CanPlay) return;
 
             long seekTs = CurTime + Config.Player.SeekOffset;
-
+            seekTs = seekTs > Duration ? Duration : seekTs;
             if (seekTs <= Duration || isLive)
             {
                 if (Config.Player.SeekAccurate)
@@ -53,7 +53,7 @@ namespace FlyleafLib.MediaPlayer
             if (!CanPlay) return;
 
             long seekTs = CurTime + Config.Player.SeekOffset2;
-
+            seekTs = seekTs > Duration ? Duration : seekTs;
             if (seekTs <= Duration || isLive)
             {
                 if (Config.Player.SeekAccurate)
