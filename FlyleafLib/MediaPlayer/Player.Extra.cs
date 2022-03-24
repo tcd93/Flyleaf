@@ -120,7 +120,7 @@ namespace FlyleafLib.MediaPlayer
             {
                 if (dialog.ShowDialog() == System.Windows.Forms.DialogResult.OK)
                 {
-                    Playlist.Play(FindMovFilesInPath(dialog.SelectedPath));
+                    Playlist.Path = dialog.SelectedPath; // notify view
                 }
             }
 

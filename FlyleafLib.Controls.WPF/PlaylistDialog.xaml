@@ -1,0 +1,59 @@
+﻿<UserControl x:Class="FlyleafLib.Controls.WPF.PlaylistDialog"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" 
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008" 
+             
+             xmlns:materialDesign="http://materialdesigninxaml.net/winfx/xaml/themes" xmlns:wpf="clr-namespace:FlyleafLib.Controls.WPF" 
+             xmlns:sys="clr-namespace:System;assembly=mscorlib"
+             d:DataContext="{d:DesignInstance Type=wpf:Flyleaf}"
+             Background="{DynamicResource MaterialDesignPaper}"
+             FontFamily="{materialDesign:MaterialDesignFont}"
+             TextElement.Foreground="{DynamicResource MaterialDesignBody}"
+             TextElement.FontWeight="Medium"
+             TextElement.FontSize="14"
+             mc:Ignorable="d">
+    <!--DataContext is set explicitly in code behind, it's bound to the Flyleaf instance-->
+    <UserControl.Resources>
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <ResourceDictionary Source="MainDictionary.xaml"/>
+            </ResourceDictionary.MergedDictionaries>
+
+            <Style x:Key="OpenButton" TargetType="{x:Type Button}" BasedOn="{StaticResource {x:Type Button}}">
+                <Setter Property="Command" Value="{x:Static materialDesign:DialogHost.CloseDialogCommand}"/>
+                <Setter Property="CommandParameter" Value="save"/>
+                <Setter Property="FontWeight" Value="ExtraBold"/>
+                <Setter Property="Margin" Value="0 0 10 0"/>
+                <Setter Property="IsEnabled" Value="True"/>
+                <Style.Triggers>
+                    <DataTrigger Binding="{Binding Player.Playlist.Path}" Value="{x:Static sys:String.Empty}">
+                        <Setter Property="IsEnabled" Value="False"/>
+                    </DataTrigger>
+                </Style.Triggers>
+            </Style>
+
+            <Style TargetType="materialDesign:PackIcon">
+                <Setter Property="Foreground" Value="{DynamicResource SecondaryHueMidBrush}"/>
+            </Style>
+
+        </ResourceDictionary>
+    </UserControl.Resources>
+    <Grid>
+        <materialDesign:DialogHost DialogTheme="Inherit">
+            <StackPanel Margin="10" Orientation="Vertical"> 
+                <DockPanel MinWidth="250">
+                    <TextBox x:Name="Directory" MinWidth="200" Margin="0 10 10 10" Text="{Binding Path=Player.Playlist.Path, UpdateSourceTrigger=PropertyChanged}"/>
+                    <Button DockPanel.Dock="Right" Padding="0" Content="{materialDesign:PackIcon Kind=DotsHorizontal, Size=24}" 
+                            Command="{Binding Player.Commands.OpenFromFolderDialog}"/>
+                </DockPanel>
+
+                <StackPanel Margin="0, 10, 0, 10" Orientation="Horizontal" HorizontalAlignment="Center" VerticalAlignment="Bottom">
+                    <!--CommandParameter is used as the return value in DialogHost.Show() (see Flyleaf.xaml.cs)-->
+                    <Button Style="{StaticResource OpenButton}" Content="OK" FontWeight="ExtraBold" Command="{x:Static materialDesign:DialogHost.CloseDialogCommand}" CommandParameter="open" />
+                    <Button Margin="10 0" Content="Cancel" Command="{x:Static materialDesign:DialogHost.CloseDialogCommand}" CommandParameter="cancel" />
+                </StackPanel>
+            </StackPanel>
+        </materialDesign:DialogHost>
+    </Grid>
+</UserControl>

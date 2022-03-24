@@ -1,17 +1,31 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Collections.ObjectModel;
+using System.ComponentModel;
 
 namespace FlyleafLib.MediaPlayer
 {
-    public class Playlist
+    public class Playlist : INotifyPropertyChanged
     {
         private readonly Player player;
 
+        private string _path = String.Empty;
         private string current;
         private List<string> playlist = new();
         private readonly Stack<string> previous = new(); // played list
 
         private readonly Random random = new();
+
+        public event PropertyChangedEventHandler PropertyChanged;
+
+        public string Path
+        {
+            get => _path;
+            set {
+                _path = value ?? String.Empty;
+                PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(Path))); 
+            }
+        }
 
         public Playlist(Player player)
         {
@@ -19,14 +33,18 @@ namespace FlyleafLib.MediaPlayer
             this.player.PlaybackCompleted += PlaybackCompleted;
         }
 
-        public void Play(List<string> files)
+        public void Play()
         {
-            if (files is not null && files.Count > 0)
+            playlist = FlyleafLib.Utils.FindMovFilesInPath(_path);
+            if (playlist is not null && playlist.Count > 0)
             {
-                playlist = files;
                 player.Log.Info($"[Playlist] Total items in queue: {playlist.Count}");
                 current = Properties.Settings.Default.Shuffled ? RandomPop() : Dequeue();
                 player.OpenAsync(current);
+            } else
+            {
+                player.Log.Warn("No playlist in current playlist");
+                // TODO: update source to show error
             }
         }
 

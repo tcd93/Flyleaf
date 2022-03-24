@@ -40,6 +40,7 @@
 
                                 <!--Pop Up Dialog (Settings/Set Values)-->
                                 <materialDesign:DialogHost x:Name="PART_DialogSettings" OverlayBackground="{x:Null}"/>
+                                <materialDesign:DialogHost x:Name="PART_PlaylistDialog" OverlayBackground="{x:Null}"/>
                                 
                                 <!-- Error Message -->
                                 <TextBlock Margin="20" VerticalAlignment="top" HorizontalAlignment="Left" TextAlignment="Left" TextWrapping="Wrap" FontSize="16" Background="{Binding Config.Video.BackgroundColor, Converter={StaticResource ColorToBrush}}" Foreground="{DynamicResource PrimaryHueMidBrush}" FontWeight="Bold" Text="{Binding ErrorMsg}"/>

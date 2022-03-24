@@ -267,8 +267,11 @@ namespace FlyleafLib
             return null;
         }
 
+        /// <param name="path">Fully qualified path name</param>
+        /// <returns>Empty list if path is invalid</returns>
         public static List<string> FindMovFilesInPath(string path)
         {
+            if (!Directory.Exists(path)) return new List<string>();
             return Directory
                 .GetFiles(path, "*", SearchOption.AllDirectories)
                 .Where(file => MovieExts.Any(file.ToLower().EndsWith))
