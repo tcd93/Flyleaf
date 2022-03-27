@@ -58,10 +58,6 @@ namespace FlyleafLib.MediaPlayer
 
         public void PlayNext()
         {
-            if (player.IsPlaying)
-            {
-                player.Stop();
-            }
             lock (playlist) {
                 if (playlist.Count == 0 || current is null)
                 {

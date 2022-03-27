@@ -27,14 +27,8 @@ namespace FlyleafPlayer
             string[] arguments = Environment.GetCommandLineArgs();
             if (arguments.Length > 1 && arguments[1] != String.Empty)
             {
-                string workingDir = AppDomain.CurrentDomain.BaseDirectory;
-                using (System.Diagnostics.EventLog eventLog = new("Application"))
-                {
-                    eventLog.Source = "Application";
-                    eventLog.WriteEntry($"Working directory: {workingDir}, File: {arguments[1]}", System.Diagnostics.EventLogEntryType.Information, 1001, 1);
-                }
                 // set working directory to installed dir, so the app can reference external libraries
-                Directory.SetCurrentDirectory(workingDir);
+                Directory.SetCurrentDirectory(AppDomain.CurrentDomain.BaseDirectory);
             }
 
             // Ensures that we have enough worker threads to avoid the UI from freezing or not updating on time
