@@ -43,9 +43,9 @@
         <materialDesign:DialogHost DialogTheme="Inherit">
             <StackPanel Margin="10" Orientation="Vertical"> 
                 <DockPanel MinWidth="250">
-                    <TextBox x:Name="Directory" MinWidth="200" Margin="0 10 10 10" Text="{Binding Path=Player.Playlist.Path, UpdateSourceTrigger=PropertyChanged}"/>
-                    <Button DockPanel.Dock="Right" Padding="0" Content="{materialDesign:PackIcon Kind=DotsHorizontal, Size=24}" 
+                    <Button DockPanel.Dock="Right" Padding="1" MinWidth="40" Content="{materialDesign:PackIcon Kind=DotsHorizontal, Size=24}" 
                             Command="{Binding Player.Commands.OpenFromFolderDialog}"/>
+                    <TextBox x:Name="Directory" MinWidth="200" Margin="0 10 10 10" Text="{Binding Path=Player.Playlist.Path, UpdateSourceTrigger=PropertyChanged}"/>
                 </DockPanel>
 
                 <StackPanel Margin="0, 10, 0, 10" Orientation="Horizontal" HorizontalAlignment="Center" VerticalAlignment="Bottom">
