@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using System.Linq;
 using System.ComponentModel;
 
 namespace FlyleafLib.MediaPlayer
@@ -23,9 +24,11 @@ namespace FlyleafLib.MediaPlayer
             get => _path;
             set {
                 _path = value ?? String.Empty;
-                PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(Path))); 
+                PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(Path)));  
             }
         }
+
+        public ObservableCollection<string> Filters { get; set; } = new();
 
         public Playlist(Player player)
         {
@@ -33,9 +36,26 @@ namespace FlyleafLib.MediaPlayer
             this.player.PlaybackCompleted += PlaybackCompleted;
         }
 
+        public void AddFilter(string filter)
+        {
+            if (filter.Trim() != string.Empty)
+            {
+                Filters.Add(filter.Trim());
+            }
+        }
+
+        public void RemoveLastFilter()
+        {
+            if (Filters.Count > 0)
+            {
+                Filters.RemoveAt(Filters.Count - 1);
+            }
+        }
+
         public void Play()
         {
-            playlist = FlyleafLib.Utils.FindMovFilesInPath(_path);
+            playlist = Utils.FindMovFilesInPath(_path).Where(media => Filters.All(filter => media.Contains(filter))).ToList();
+
             if (playlist is not null && playlist.Count > 0)
             {
                 player.Log.Info($"[Playlist] Total items in queue: {playlist.Count}");

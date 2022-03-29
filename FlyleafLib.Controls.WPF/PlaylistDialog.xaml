@@ -5,7 +5,7 @@
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008" 
              
              xmlns:materialDesign="http://materialdesigninxaml.net/winfx/xaml/themes" xmlns:wpf="clr-namespace:FlyleafLib.Controls.WPF" 
-             xmlns:sys="clr-namespace:System;assembly=mscorlib"
+             xmlns:sys="clr-namespace:System;assembly=mscorlib" 
              d:DataContext="{d:DesignInstance Type=wpf:Flyleaf}"
              Background="{DynamicResource MaterialDesignPaper}"
              FontFamily="{materialDesign:MaterialDesignFont}"
@@ -13,11 +13,11 @@
              TextElement.FontWeight="Medium"
              TextElement.FontSize="14"
              mc:Ignorable="d">
-    <!--DataContext is set explicitly in code behind, it's bound to the Flyleaf instance-->
     <UserControl.Resources>
         <ResourceDictionary>
             <ResourceDictionary.MergedDictionaries>
                 <ResourceDictionary Source="MainDictionary.xaml"/>
+                <ResourceDictionary Source="pack://application:,,,/MaterialDesignThemes.Wpf;component/Themes/MaterialDesignTheme.ListBox.xaml" />
             </ResourceDictionary.MergedDictionaries>
 
             <Style x:Key="OpenButton" TargetType="{x:Type Button}" BasedOn="{StaticResource {x:Type Button}}">
@@ -36,17 +36,76 @@
             <Style TargetType="materialDesign:PackIcon">
                 <Setter Property="Foreground" Value="{DynamicResource SecondaryHueMidBrush}"/>
             </Style>
-
+            
         </ResourceDictionary>
     </UserControl.Resources>
     <Grid>
         <materialDesign:DialogHost DialogTheme="Inherit">
-            <StackPanel Margin="10" Orientation="Vertical"> 
-                <DockPanel MinWidth="250">
+            <StackPanel Margin="10" Orientation="Vertical" Width="400">
+                <DockPanel>
                     <Button DockPanel.Dock="Right" Padding="1" MinWidth="40" Content="{materialDesign:PackIcon Kind=DotsHorizontal, Size=24}" 
                             Command="{Binding Player.Commands.OpenFromFolderDialog}"/>
-                    <TextBox x:Name="Directory" MinWidth="200" Margin="0 10 10 10" Text="{Binding Path=Player.Playlist.Path, UpdateSourceTrigger=PropertyChanged}"/>
+                    <TextBox x:Name="Directory" MinWidth="200" Margin="0 10 10 10" Text="{Binding Player.Playlist.Path, UpdateSourceTrigger=PropertyChanged}"/>
                 </DockPanel>
+
+                <Border BorderThickness="1" BorderBrush="{DynamicResource PrimaryHueMidBrush}" Padding="0,4,0,4">
+                    <ItemsControl ScrollViewer.HorizontalScrollBarVisibility="Disabled">
+                        <ItemsControl.Resources>
+                            <CollectionViewSource x:Key="source_workaround" Source="{Binding Player.Playlist.Filters}" />
+                            
+                            <DataTemplate DataType="{x:Type sys:String}">
+                                <materialDesign:Chip IsDeletable="True" DeleteClick="Chip_DeleteClick">
+                                    <!-- using Content property with String directly causes stackover flow because ContentControl -->
+                                    <!-- will try to apply itself with this template-->
+                                    <materialDesign:Chip.Content>
+                                        <TextBlock Text="{Binding Path=.}"></TextBlock>
+                                    </materialDesign:Chip.Content>
+                                </materialDesign:Chip>
+                            </DataTemplate>
+
+                            <DataTemplate DataType="{x:Type sys:Boolean}">
+                                <Grid Margin="4">
+                                    <TextBox VerticalAlignment="Center" HorizontalAlignment="Stretch" BorderBrush="Transparent" MinWidth="50"
+                                             PreviewKeyDown="FilterTextBox_KeyDown" x:Name="TextBoxFilter"
+                                             materialDesign:TextFieldAssist.DecorationVisibility="Hidden" />
+                                    <!--placeholder for textbox-->
+                                    <TextBlock IsHitTestVisible="False" Text="Press TAB to add filters" VerticalAlignment="Center" Foreground="DarkGray">
+                                        <TextBlock.Style>
+                                            <Style TargetType="TextBlock">
+                                                <Setter Property="Visibility" Value="Collapsed"/>
+                                                <Style.Triggers>
+                                                    <MultiDataTrigger>
+                                                        <MultiDataTrigger.Conditions>
+                                                            <Condition Binding="{Binding Source={StaticResource source_workaround}, Path=Count}" Value="0"/>
+                                                            <Condition Binding="{Binding ElementName=TextBoxFilter, Path=Text}" Value=""/>
+                                                        </MultiDataTrigger.Conditions>
+                                                        <Setter Property="Visibility" Value="Visible"/>
+                                                    </MultiDataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </TextBlock.Style>
+                                    </TextBlock>
+                                </Grid>
+                            </DataTemplate>
+                        </ItemsControl.Resources>
+                        
+                        <ItemsControl.ItemsSource>
+                            <!-- a string collection followed by a dummy boolean, said boolean would be replaced by DataTemplate of corresponding type-->
+                            <CompositeCollection>
+                                <CollectionContainer Collection="{Binding Source={StaticResource source_workaround}}" />
+                                <sys:Boolean />
+                            </CompositeCollection>
+                        </ItemsControl.ItemsSource>
+                        
+                        <ItemsControl.ItemsPanel>
+                            <ItemsPanelTemplate>
+                                <WrapPanel IsItemsHost="True" />
+                            </ItemsPanelTemplate>
+                        </ItemsControl.ItemsPanel>
+                        
+                    </ItemsControl>
+                </Border>
+
 
                 <StackPanel Margin="0, 10, 0, 10" Orientation="Horizontal" HorizontalAlignment="Center" VerticalAlignment="Bottom">
                     <!--CommandParameter is used as the return value in DialogHost.Show() (see Flyleaf.xaml.cs)-->
