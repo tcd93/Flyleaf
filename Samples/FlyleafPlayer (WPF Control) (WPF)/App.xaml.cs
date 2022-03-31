@@ -29,11 +29,11 @@ namespace FlyleafPlayer
             } else
             {
                 // load Main Window, this shall be called first time only
-                createMainWindow();
+                CreateMainWindow();
             }
         }
 
-        private void createMainWindow()
+        private void CreateMainWindow()
         {
             lock (this)
             {
@@ -52,7 +52,7 @@ namespace FlyleafPlayer
             {
                 if (mainWindow == null) // when app is created from double clicking a media file, this event triggers before main window is created
                 {
-                    createMainWindow();
+                    CreateMainWindow();
                 }
                 if (mainWindow.Player.VideoView == null)
                 {

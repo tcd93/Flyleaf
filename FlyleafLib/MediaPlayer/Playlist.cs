@@ -54,7 +54,8 @@ namespace FlyleafLib.MediaPlayer
 
         public void Play()
         {
-            playlist = Utils.FindMovFilesInPath(_path).Where(media => Filters.All(filter => media.Contains(filter))).ToList();
+            playlist = Utils.FindMovFilesInPath(_path)
+                .Where(media => Filters.All(filter => media.ToLower().Contains(filter.ToLower()))).ToList();
 
             if (playlist is not null && playlist.Count > 0)
             {
