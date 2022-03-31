@@ -71,7 +71,7 @@ namespace FlyleafLib.MediaPlayer
             get
             {
                 lock (locker)
-                    return sourceVoice == null || Mute ? _Volume : (int) ((decimal)sourceVoice.Volume * 100);
+                    return _Volume;
             }
             set
             {
@@ -93,6 +93,7 @@ namespace FlyleafLib.MediaPlayer
                 }
 
                 Set(ref _Volume, value, false);
+                Properties.Settings.Default.Volume = _Volume;
             }
         }
         int _Volume;
@@ -106,9 +107,15 @@ namespace FlyleafLib.MediaPlayer
             set
             {
                 if (value)
+                {
+                    Properties.Settings.Default.Volume = 0;
                     sourceVoice.Volume = 0;
+                }
                 else
+                {
+                    Properties.Settings.Default.Volume = _Volume;
                     sourceVoice.Volume = _Volume / 100.0f;
+                }
 
                 Set(ref mute, value, false);
             }
@@ -196,7 +203,6 @@ namespace FlyleafLib.MediaPlayer
                 SampleRate      = SampleRate;
             };
 
-            Volume = Config.Player.VolumeMax / 2;
             Initialize();
         }
 
@@ -225,6 +231,10 @@ namespace FlyleafLib.MediaPlayer
                 sourceVoice     = xaudio2.CreateSourceVoice(waveFormat, true);
                 sourceVoice.SetSourceSampleRate(SampleRate);
                 sourceVoice.Start();
+                if (0 <= Properties.Settings.Default.Volume && Properties.Settings.Default.Volume <= Config.Player.VolumeMax)
+                {
+                    _Volume = Properties.Settings.Default.Volume;
+                }
 
                 masteringVoice.Volume = Config.Player.VolumeMax / 100.0f;
                 Volume = _Volume;
