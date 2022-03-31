@@ -100,15 +100,6 @@ namespace FlyleafLib.Controls.WPF
 
                 if (ControlRequiresPlayer != null)
                     ControlRequiresPlayer.Player = Player;
-
-                // detect command line input (TODO: put this else where that make more sense)
-                // working directory should be changed from MainWindow loading to avoid assembly loading errors
-                // OpenAsync can only be called after Control initialization
-                string[] arguments = Environment.GetCommandLineArgs();
-                if (arguments.Length > 1 && arguments[1] != String.Empty)
-                {
-                    Player.OpenAsync(arguments[1]);
-                }
             }
         }
 

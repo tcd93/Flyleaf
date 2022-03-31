@@ -23,14 +23,6 @@ namespace FlyleafPlayer
 
         public MainWindow()
         {
-            // detect command line input
-            string[] arguments = Environment.GetCommandLineArgs();
-            if (arguments.Length > 1 && arguments[1] != String.Empty)
-            {
-                // set working directory to installed dir, so the app can reference external libraries
-                Directory.SetCurrentDirectory(AppDomain.CurrentDomain.BaseDirectory);
-            }
-
             // Ensures that we have enough worker threads to avoid the UI from freezing or not updating on time
             ThreadPool.GetMinThreads(out int workers, out int ports);
             ThreadPool.SetMinThreads(workers + 6, ports + 6);
@@ -80,6 +72,7 @@ namespace FlyleafPlayer
                 }
             };
         }
+
         bool ReversePlaybackChecked;
 
         private void Window_Loaded(object sender, RoutedEventArgs e)
