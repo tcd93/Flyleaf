@@ -49,4 +49,22 @@ namespace FlyleafLib.Controls.WPF
             Player.Playlist.Filters.Remove(deleted);
         }
     }
+
+    public partial class LastChildFillWrapPanel : WrapPanel
+    {
+        protected override Size ArrangeOverride(Size finalSize)
+        {
+            var wrapBoxSize = base.ArrangeOverride(finalSize);
+
+            if (Children.Count > 0)
+            {
+                if (Children[Children.Count - 1] is FrameworkElement lastElem)
+                {
+                    var relativePosToParent = GetVisualChild(Children.Count - 1).TransformToAncestor(this).Transform(new Point(0, 0));
+                    lastElem.Arrange(new Rect(relativePosToParent.X, relativePosToParent.Y, wrapBoxSize.Width - relativePosToParent.X, lastElem.ActualHeight));
+                }
+            }
+            return wrapBoxSize;
+        }
+    }
 }

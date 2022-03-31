@@ -65,7 +65,7 @@
 
                             <DataTemplate DataType="{x:Type sys:Boolean}">
                                 <Grid Margin="4">
-                                    <TextBox VerticalAlignment="Center" HorizontalAlignment="Stretch" BorderBrush="Transparent" MinWidth="50"
+                                    <TextBox VerticalAlignment="Center" BorderBrush="Transparent"
                                              PreviewKeyDown="FilterTextBox_KeyDown" x:Name="TextBoxFilter"
                                              materialDesign:TextFieldAssist.DecorationVisibility="Hidden" />
                                     <!--placeholder for textbox-->
@@ -99,7 +99,7 @@
                         
                         <ItemsControl.ItemsPanel>
                             <ItemsPanelTemplate>
-                                <WrapPanel IsItemsHost="True" />
+                                <wpf:LastChildFillWrapPanel IsItemsHost="True" />
                             </ItemsPanelTemplate>
                         </ItemsControl.ItemsPanel>
                         
