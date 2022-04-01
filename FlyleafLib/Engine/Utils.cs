@@ -266,6 +266,18 @@ namespace FlyleafLib
 
             return null;
         }
+
+        /// <param name="path">Fully qualified path name</param>
+        /// <returns>Empty list if path is invalid</returns>
+        public static List<string> FindMovFilesInPath(string path)
+        {
+            if (!Directory.Exists(path)) return new List<string>();
+            return Directory
+                .GetFiles(path, "*", SearchOption.AllDirectories)
+                .Where(file => MovieExts.Any(file.ToLower().EndsWith))
+                .ToList();
+        }
+
         public static string GetUserDownloadPath() { try { return Registry.CurrentUser.OpenSubKey(@"Software\Microsoft\Windows\CurrentVersion\Explorer\User Shell Folders\").GetValue("{374DE290-123F-4565-9164-39C4925E467B}").ToString(); } catch (Exception) { return null; } }
 
         static List<PerformanceCounter> gpuCounters;

@@ -23,12 +23,12 @@ namespace FlyleafLib.MediaPlayer
         public ICommand Open                    { get; set; }
         public ICommand OpenFromClipboard       { get; set; }
         public ICommand OpenFromFileDialog      { get; set; }
+        public ICommand OpenFromFolderDialog    { get; set; }
 
         public ICommand Play                    { get; set; }
         public ICommand Pause                   { get; set; }
         public ICommand Stop                    { get; set; }
         public ICommand TogglePlayPause         { get; set; }
-
         public ICommand SeekBackward            { get; set; }
         public ICommand SeekBackward2           { get; set; }
         public ICommand SeekForward             { get; set; }
@@ -72,8 +72,9 @@ namespace FlyleafLib.MediaPlayer
             Open                    = new RelayCommand(OpenAction);
             OpenFromClipboard       = new RelayCommandSimple(player.OpenFromClipboard);
             OpenFromFileDialog      = new RelayCommandSimple(player.OpenFromFileDialog);
+            OpenFromFolderDialog    = new RelayCommandSimple(player.OpenFromFolderDialog);
 
-            Play                    = new RelayCommandSimple(player.Play);
+            Play = new RelayCommandSimple(player.Play);
             Pause                   = new RelayCommandSimple(player.Pause);
             TogglePlayPause         = new RelayCommandSimple(player.TogglePlayPause);
             Stop                    = new RelayCommandSimple(player.Stop);

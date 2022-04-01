@@ -332,6 +332,9 @@ namespace FlyleafLib.MediaPlayer
             Add(Key.MediaPlayPause,     KeyBindingAction.TogglePlayPause);
             Add(Key.Play,               KeyBindingAction.TogglePlayPause);
 
+            Add(Key.PageDown,           KeyBindingAction.PlayNext);
+            Add(Key.PageUp,             KeyBindingAction.PlayPrevious);
+
             Add(Key.A,                  KeyBindingAction.ToggleAudio, false, false, true);
             Add(Key.S,                  KeyBindingAction.ToggleSubtitles, false, false, true);
             Add(Key.V,                  KeyBindingAction.ToggleVideo, false, false, true);
@@ -408,6 +411,8 @@ namespace FlyleafLib.MediaPlayer
 
                 case KeyBindingAction.OpenFromFileDialog:
                     return player.OpenFromFileDialog;
+                case KeyBindingAction.OpenFromFolderDialog:
+                    return player.OpenFromFolderDialog;
 
                 case KeyBindingAction.CopyToClipboard:
                     return player.CopyToClipboard;
@@ -423,6 +428,12 @@ namespace FlyleafLib.MediaPlayer
 
                 case KeyBindingAction.Play:
                     return player.Play;
+
+                case KeyBindingAction.PlayNext:
+                    return player.Playlist.PlayNext;
+
+                case KeyBindingAction.PlayPrevious:
+                    return player.Playlist.PlayPrevious;
 
                 case KeyBindingAction.TogglePlayPause:
                     return player.TogglePlayPause;
@@ -505,6 +516,8 @@ namespace FlyleafLib.MediaPlayer
             //{ KeyBindingAction.ToggleRecording },
             //{ KeyBindingAction.ToggleReversePlayback },
             { KeyBindingAction.Play },
+            { KeyBindingAction.PlayNext },
+            { KeyBindingAction.PlayPrevious },
             { KeyBindingAction.Pause },
             //{ KeyBindingAction.Stop },
             { KeyBindingAction.Flush },
@@ -547,8 +560,8 @@ namespace FlyleafLib.MediaPlayer
         AudioDelayAdd, AudioDelayAdd2, AudioDelayRemove, AudioDelayRemove2, ToggleMute, VolumeUp, VolumeDown,
         SubtitlesDelayAdd, SubtitlesDelayAdd2, SubtitlesDelayRemove, SubtitlesDelayRemove2,
 
-        CopyToClipboard, OpenFromClipboard, OpenFromFileDialog,
-        Stop, Pause, Play, TogglePlayPause, ToggleReversePlayback, Flush,
+        CopyToClipboard, OpenFromClipboard, OpenFromFileDialog, OpenFromFolderDialog,
+        Stop, Pause, Play, PlayNext, PlayPrevious, TogglePlayPause, ToggleReversePlayback, Flush,
         TakeSnapshot,
         NormalScreen, FullScreen, ToggleFullScreen,
 

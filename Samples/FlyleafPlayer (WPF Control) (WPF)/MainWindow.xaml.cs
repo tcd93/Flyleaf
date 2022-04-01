@@ -72,6 +72,7 @@ namespace FlyleafPlayer
                 }
             };
         }
+
         bool ReversePlaybackChecked;
 
         private void Window_Loaded(object sender, RoutedEventArgs e)

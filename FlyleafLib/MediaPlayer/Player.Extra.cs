@@ -1,5 +1,6 @@
 ﻿using System;
 using System.IO;
+using System.Collections.Generic;
 
 using FlyleafLib.MediaFramework.MediaDecoder;
 using FlyleafLib.MediaFramework.MediaDemuxer;
@@ -38,7 +39,7 @@ namespace FlyleafLib.MediaPlayer
             if (!CanPlay) return;
 
             long seekTs = CurTime + Config.Player.SeekOffset;
-
+            seekTs = seekTs > Duration ? Duration : seekTs;
             if (seekTs <= Duration || isLive)
             {
                 if (Config.Player.SeekAccurate)
@@ -52,7 +53,7 @@ namespace FlyleafLib.MediaPlayer
             if (!CanPlay) return;
 
             long seekTs = CurTime + Config.Player.SeekOffset2;
-
+            seekTs = seekTs > Duration ? Duration : seekTs;
             if (seekTs <= Duration || isLive)
             {
                 if (Config.Player.SeekAccurate)
@@ -100,6 +101,33 @@ namespace FlyleafLib.MediaPlayer
 
             if (allowIdleMode)
                 Config.Player.ActivityMode = true;
+
+            IsOpenFileDialogOpen = false;
+        }
+
+        public void OpenFromFolderDialog()
+        {
+            IsOpenFileDialogOpen = true;
+            bool allowIdleMode = false;
+
+            if (Config.Player.ActivityMode)
+            {
+                allowIdleMode = true;
+                Config.Player.ActivityMode = false;
+            }
+
+            using (System.Windows.Forms.FolderBrowserDialog dialog = new())
+            {
+                if (dialog.ShowDialog() == System.Windows.Forms.DialogResult.OK)
+                {
+                    Playlist.Path = dialog.SelectedPath; // notify view
+                }
+            }
+
+            if (allowIdleMode)
+            {
+                Config.Player.ActivityMode = true;
+            }
 
             IsOpenFileDialogOpen = false;
         }

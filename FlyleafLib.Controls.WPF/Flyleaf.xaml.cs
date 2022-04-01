@@ -160,6 +160,7 @@ namespace FlyleafLib.Controls.WPF
         MenuItem    popUpCustomAspectRatio;
         MenuItem    popUpCustomAspectRatioSet;
         string      dialogSettingsIdentifier;
+        string      dialogPlaylistIdentifier;
 
         Thickness   subsInitialMargin;
 
@@ -216,11 +217,17 @@ namespace FlyleafLib.Controls.WPF
             popUpMenuVideo      = ((FrameworkElement)Template.FindName("PART_ContextMenuOwner_Video", this))?.ContextMenu;
             Subtitles           = (TextBlock) Template.FindName("PART_Subtitles", this);
 
-            var dialogSettings  = (DialogHost)Template.FindName("PART_DialogSettings", this);
+            var dialogSettings = (DialogHost)Template.FindName("PART_DialogSettings", this);
+            var dialogPlaylist = (DialogHost)Template.FindName("PART_PlaylistDialog", this);
             if (dialogSettings != null)
             {
                 dialogSettingsIdentifier = $"DialogSettings_{Guid.NewGuid()}";
                 dialogSettings.Identifier = dialogSettingsIdentifier;
+            }
+            if (dialogPlaylist != null)
+            {
+                dialogPlaylistIdentifier = $"DialogPlaylist_{Guid.NewGuid()}";
+                dialogPlaylist.Identifier = dialogPlaylistIdentifier;
             }
 
             if (popUpMenu != null)
@@ -335,6 +342,7 @@ namespace FlyleafLib.Controls.WPF
             Raise(null);
             settings?.Raise(null);
         }
+
         private void InitializePlayer(Player oldPlayer = null)
         {
             // Updates the key binding actions with the new instances in case of swap or initial load
@@ -465,6 +473,7 @@ namespace FlyleafLib.Controls.WPF
         void RegisterCommands()
         {
             OpenSettings        = new RelayCommand(OpenSettingsAction);
+            OpenPlaylistDialog  = new RelayCommand(OpenPlaylistDialogAction);
             OpenColorPicker     = new RelayCommand(OpenColorPickerAction);
             ChangeAspectRatio   = new RelayCommand(ChangeAspectRatioAction);
             SetSubtitlesFont    = new RelayCommand(SetSubtitlesFontAction);
@@ -525,6 +534,36 @@ namespace FlyleafLib.Controls.WPF
                 settings.ApplySettings();
                 if (result.ToString() == "save")
                     UIConfig.Save(this, UIConfigPath, ConfigPath);
+            }
+        }
+        public ICommand OpenPlaylistDialog { get; set; }
+
+        public async void OpenPlaylistDialogAction(object obj = null)
+        {
+            if (Config == null || dialogPlaylistIdentifier == null)
+                return;
+
+            if (DialogHost.IsDialogOpen(dialogPlaylistIdentifier))
+            {
+                DialogHost.Close(dialogPlaylistIdentifier, "cancel");
+                return;
+            }
+
+            Config.Player.ActivityMode = false;
+            Config.Player.KeyBindings.Enabled = false;
+
+            var playlistDialog = new PlaylistDialog(this);
+
+            var result = await DialogHost.Show(playlistDialog, dialogPlaylistIdentifier);
+
+            Config.Player.ActivityMode = true;
+            Config.Player.KeyBindings.Enabled = true;
+
+            if (result == null) return;
+
+            if (result.ToString() != "cancel")
+            {
+                Player.Playlist.Play();
             }
         }
 

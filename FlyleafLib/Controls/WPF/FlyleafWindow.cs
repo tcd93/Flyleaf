@@ -169,7 +169,10 @@ namespace FlyleafLib.Controls.WPF
         }
 
         void Wndhost_Closing(object sender, System.ComponentModel.CancelEventArgs e) { Dispose(); }
-        private void FlyleafWindow_Closed(object sender, EventArgs e) { Dispose(); }
+        private void FlyleafWindow_Closed(object sender, EventArgs e) {
+            Properties.Settings.Default.Save(); // save settings, see https://docs.microsoft.com/en-us/archive/blogs/patrickdanino/user-settings-in-wpf
+            Dispose(); 
+        }
 
         protected override void OnKeyDown(KeyEventArgs e) { if (e.Key == Key.System && e.SystemKey == Key.F4) WindowBack?.Focus(); }
     }
