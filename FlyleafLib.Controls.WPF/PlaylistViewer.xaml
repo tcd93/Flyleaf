@@ -1,0 +1,60 @@
+﻿<UserControl x:Class="FlyleafLib.Controls.WPF.PlaylistViewer"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" 
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008" 
+             
+             xmlns:materialDesign="http://materialdesigninxaml.net/winfx/xaml/themes"
+             xmlns:sys="clr-namespace:System;assembly=mscorlib" 
+             xmlns:wpf="clr-namespace:FlyleafLib.Controls.WPF"
+             Background="{DynamicResource MaterialDesignPaper}"
+             FontFamily="{materialDesign:MaterialDesignFont}"
+             TextElement.Foreground="{DynamicResource MaterialDesignBody}"
+             TextElement.FontWeight="Medium"
+             TextElement.FontSize="14"
+             mc:Ignorable="d" x:Name="PlaylistViewerControl">
+    <UserControl.Resources>
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <ResourceDictionary Source="MainDictionary.xaml"/>
+                <ResourceDictionary Source="pack://application:,,,/MaterialDesignThemes.Wpf;component/Themes/MaterialDesignTheme.ListBox.xaml" />
+            </ResourceDictionary.MergedDictionaries>
+
+            <Style TargetType="{x:Type ListBox}" BasedOn="{StaticResource MaterialDesignListBox}" />
+
+            <Style TargetType="{x:Type ListBoxItem}" BasedOn="{StaticResource MaterialDesignListBoxItem}">
+                <Setter Property="Background" Value="Transparent"></Setter>
+            </Style>
+        </ResourceDictionary>
+    </UserControl.Resources>
+    <Grid DataContext="{Binding ElementName=PlaylistViewerControl}">
+        <materialDesign:DrawerHost IsLeftDrawerOpen="{Binding IsOpen}" LeftDrawerBackground="Transparent">
+            <materialDesign:DrawerHost.LeftDrawerContent>
+                <ListBox ItemsSource="{Binding Playlist}" x:Name="ListBox">
+                    <ListBox.ItemTemplate>
+                        <DataTemplate>
+                            <DockPanel LastChildFill="False">
+                                <TextBlock Text="{Binding Name}" VerticalAlignment="Center" Width="150" TextTrimming="CharacterEllipsis"
+                                           MouseDown="ListViewItem_MouseDown"/>
+                                <Separator/>
+                                <materialDesign:PackIcon Padding="8,0,0,0" DockPanel.Dock="Right" Kind="CloseBoxOutline" Tag="{Binding}"
+                                                         MouseDown="ListViewCrossIcon_MouseDown" Width="20" Height="20" />
+                            </DockPanel>
+                        </DataTemplate>
+                    </ListBox.ItemTemplate>
+                    <ListBox.ItemContainerStyle>
+                        <Style TargetType="ListBoxItem" BasedOn="{StaticResource MaterialDesignListBoxItem}">
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding IsSelected}" Value="True">
+                                    <Setter Property="BorderThickness" Value="1" />
+                                    <Setter Property="BorderBrush" Value="{DynamicResource SecondaryHueLightBrush}" />
+                                </DataTrigger>
+                            </Style.Triggers>
+                            <Setter Property="Padding" Value="4,8,4,8"/>
+                        </Style>
+                    </ListBox.ItemContainerStyle>
+                </ListBox>
+            </materialDesign:DrawerHost.LeftDrawerContent>
+        </materialDesign:DrawerHost>
+    </Grid>
+</UserControl>

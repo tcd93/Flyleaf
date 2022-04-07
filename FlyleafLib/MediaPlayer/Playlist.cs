@@ -24,7 +24,16 @@ namespace FlyleafLib.MediaPlayer
             get => _path;
             set {
                 _path = value ?? String.Empty;
-                PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(Path)));  
+                PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(Path)));
+            }
+        }
+
+        private bool _openSideView;
+        public bool OpenSideView { 
+            get => _openSideView; 
+            set {
+                _openSideView = value;
+                PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(OpenSideView)));
             }
         }
 

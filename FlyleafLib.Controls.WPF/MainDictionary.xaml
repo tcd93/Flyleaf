@@ -596,6 +596,7 @@
     <ContextMenu x:Key="PopUpMenu">
         <MenuItem Header="Open File" Command="{Binding Player.Commands.OpenFromFileDialog}" Icon="{materialDesign:PackIcon FolderOutline}"/>
         <MenuItem Header="Open Folder" Icon="{materialDesign:PackIcon FolderOutline}" Command="{Binding OpenPlaylistDialog}" />
+        <MenuItem Header="Playlist" Icon="{materialDesign:PackIcon FolderOutline}" Command="{Binding OpenPlaylistViewer}" />
         <MenuItem Header="Paste Url" Command="{Binding Player.Commands.OpenFromClipboard}" IsEnabled="{Binding CanPaste}" Icon="{materialDesign:PackIcon ContentPaste}"/>
         <Separator />
 

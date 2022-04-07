@@ -162,7 +162,7 @@ namespace FlyleafLib.Controls.WPF
         string      dialogSettingsIdentifier;
         string      dialogPlaylistIdentifier;
 
-        Thickness   subsInitialMargin;
+        Thickness subsInitialMargin;
 
         bool        isDesignMode = (bool) DesignerProperties.IsInDesignModeProperty.GetMetadata(typeof(DependencyObject)).DefaultValue;
         bool        prevActivityMode;
@@ -474,6 +474,7 @@ namespace FlyleafLib.Controls.WPF
         {
             OpenSettings        = new RelayCommand(OpenSettingsAction);
             OpenPlaylistDialog  = new RelayCommand(OpenPlaylistDialogAction);
+            OpenPlaylistViewer  = new RelayCommand(OpenPlaylistViewerAction);
             OpenColorPicker     = new RelayCommand(OpenColorPickerAction);
             ChangeAspectRatio   = new RelayCommand(ChangeAspectRatioAction);
             SetSubtitlesFont    = new RelayCommand(SetSubtitlesFontAction);
@@ -565,6 +566,13 @@ namespace FlyleafLib.Controls.WPF
             {
                 Player.Playlist.Play();
             }
+        }
+
+        public ICommand OpenPlaylistViewer { get; set; }
+
+        public void OpenPlaylistViewerAction(object obj = null)
+        {
+            Player.Playlist.OpenSideView = !Player.Playlist.OpenSideView;
         }
 
         public ICommand OpenColorPicker { get; set; }
