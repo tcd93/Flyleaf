@@ -137,7 +137,7 @@ namespace FlyleafLib.Controls.WPF
         string      dialogSettingsIdentifier;
         string      dialogPlaylistIdentifier;
 
-        Thickness   subsInitialMargin;
+        Thickness subsInitialMargin;
 
         bool        isDesignMode = (bool) DesignerProperties.IsInDesignModeProperty.GetMetadata(typeof(DependencyObject)).DefaultValue;
         bool        initialActivityMode; // Note: we consider the user will not changed it
@@ -434,6 +434,7 @@ namespace FlyleafLib.Controls.WPF
             OpenFileDialog      = new RelayCommand(OpenFileDialogAction);
             OpenSettings        = new RelayCommand(OpenSettingsAction);
             OpenPlaylistDialog  = new RelayCommand(OpenPlaylistDialogAction);
+            OpenPlaylistViewer  = new RelayCommand(OpenPlaylistViewerAction);
             OpenColorPicker     = new RelayCommand(OpenColorPickerAction);
             ChangeAspectRatio   = new RelayCommand(ChangeAspectRatioAction);
             SetSubtitlesFont    = new RelayCommand(SetSubtitlesFontAction);
