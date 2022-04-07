@@ -45,6 +45,8 @@
                                                       CurrentItem="{Binding Player.MediaPlaylist.Current}"
                                                       ItemsSource="{Binding Player.MediaPlaylist.Items}"
                                                       IsOpen="{Binding Player.MediaPlaylist.OpenSideView}" />
+                                <!-- Error Message -->
+                                <TextBlock Margin="20" VerticalAlignment="top" HorizontalAlignment="Left" TextAlignment="Left" TextWrapping="Wrap" FontSize="16" Background="{Binding Config.Video.BackgroundColor, Converter={StaticResource ColorToBrush}}" Foreground="{DynamicResource PrimaryHueMidBrush}" FontWeight="Bold" Text="{Binding ErrorMsg}"/>
 
                                 <!--Debug Info-->
                                 <fl:PlayerDebug d:Visibility="Hidden" VerticalAlignment="Center" HorizontalAlignment="Center" Player="{Binding Player}" BoxColor="#AA000000" HeaderColor="White" InfoColor="{DynamicResource PrimaryHueLightBrush}" ValueColor="{DynamicResource SecondaryHueLightBrush}" Visibility="{Binding ShowDebug, Converter={StaticResource BooleanToVisibility}}"/>
@@ -159,7 +161,7 @@
                                             </ToggleButton>
 
                                             <!--Subtitles Button (Currently not used)-->
-                                            <Button Command="{Binding ShowSubtitlesMenu}" x:Name="PART_ContextMenuOwner_Subtitles" Grid.Column="2" Foreground="{DynamicResource SecondaryHueMidBrush}" Content="{materialDesign:PackIcon Kind=CcOutline}">
+                                            <Button Command="{Binding ShowSubtitlesMenu}" x:Name="PART_ContextMenuOwner_Subtitles" Grid.Column="2" Foreground="{DynamicResource PrimaryHueMidBrush}" Content="{materialDesign:PackIcon Kind=CcOutline}">
                                                 <Button.Style>
                                                     <Style TargetType="Button" BasedOn="{StaticResource IconButton}">
                                                         <Setter Property="ContextMenu">
@@ -204,7 +206,7 @@
                                             </StackPanel>
 
                                             <!--Volume Button (Mute/Unmute)-->
-                                            <Button Grid.Column="4" Foreground="{DynamicResource SecondaryHueMidBrush}" Command="{Binding Player.Commands.ToggleMute}">
+                                            <Button Grid.Column="4" Foreground="{DynamicResource PrimaryHueMidBrush}" Command="{Binding Player.Commands.ToggleMute}">
                                                 <Button.Style>
                                                     <Style TargetType="Button" BasedOn="{StaticResource IconButton}">
                                                         <Setter Property="Content" Value="{materialDesign:PackIcon Kind=VolumeHigh}"/>
@@ -227,7 +229,7 @@
                                             </Button>
 
                                             <!--Volume Slider (Decibel)-->
-                                            <Slider Grid.Column="5" Style="{DynamicResource FlyleafSlider}" Foreground="{DynamicResource SecondaryHueMidBrush}" Focusable="False" Margin="0,0,6,6" Width="100" VerticalAlignment="Bottom" Minimum="0" Maximum="{Binding Config.Player.VolumeMax, Mode=OneWay}" Value="{Binding Player.Audio.Volume}"/>
+                                            <Slider Grid.Column="5" Style="{DynamicResource FlyleafSlider}" Foreground="{DynamicResource PrimaryHueMidBrush}" Focusable="False" Margin="0,0,6,6" Width="100" VerticalAlignment="Bottom" Minimum="0" Maximum="{Binding Config.Player.VolumeMax, Mode=OneWay}" Value="{Binding Player.Audio.Volume}"/>
 
                                             <!--Open Settings Button-->
                                             <Button Grid.Column="6" Style="{StaticResource IconButton}" Content="{materialDesign:PackIcon Kind=SettingsOutline}" Command="{Binding OpenSettings}"/>
