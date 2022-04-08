@@ -36,7 +36,7 @@ namespace FlyleafLib.MediaPlayer
             }
         }
 
-        private string _current;
+        private string _current = "";
         /// <summary>
         /// Bound by view model (PlaylistViewer.xaml), UI modifications are reflected here.
         /// Setting this value plays the media immediately
@@ -47,8 +47,8 @@ namespace FlyleafLib.MediaPlayer
             set
             {
                 if (value == _current) return;
-                _current = value;
-                if (_current != null) player.OpenAsync(_current);
+                _current = value ?? "";
+                if (!string.IsNullOrEmpty(_current)) player.OpenAsync(_current);
                 PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(Current)));
             }
         }
