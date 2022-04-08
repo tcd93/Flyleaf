@@ -1,13 +1,10 @@
-﻿using System;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
-using System.Diagnostics;
+using System.Linq;
 using System.Windows;
 using System.Windows.Controls;
-using System.Windows.Data;
 using System.Windows.Input;
-using FlyleafLib.MediaPlayer;
 using MaterialDesignThemes.Wpf;
 
 namespace FlyleafLib.Controls.WPF
@@ -17,8 +14,6 @@ namespace FlyleafLib.Controls.WPF
     /// </summary>
     public partial class PlaylistViewer : UserControl, INotifyPropertyChanged
     {
-        public event PropertyChangedEventHandler PropertyChanged;
-
         /// The item in playlist, and the current status (playing/non-playing)
         public struct Item
         {
@@ -31,9 +26,11 @@ namespace FlyleafLib.Controls.WPF
             public bool IsSelected { get; }
         }
 
+        #region Properties
+
         public static readonly DependencyProperty IsOpenProp =
-            DependencyProperty.Register("IsOpen", typeof(bool), typeof(PlaylistViewer), 
-                new FrameworkPropertyMetadata(false, FrameworkPropertyMetadataOptions.None, IsOpenPropertyChanged));
+            DependencyProperty.Register("IsOpen", typeof(bool), typeof(PlaylistViewer),
+                new FrameworkPropertyMetadata(false, FrameworkPropertyMetadataOptions.BindsTwoWayByDefault, IsOpenPropertyChanged));
 
         private static void IsOpenPropertyChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
         {
@@ -51,22 +48,51 @@ namespace FlyleafLib.Controls.WPF
             }
         }
 
-        public bool IsOpen
+        public bool IsOpen { get => (bool)GetValue(IsOpenProp); set => SetValue(IsOpenProp, value); }
+
+        public static readonly DependencyProperty CurrentItemProp =
+            DependencyProperty.Register("CurrentItem", typeof(string), typeof(PlaylistViewer),
+                new FrameworkPropertyMetadata("", FrameworkPropertyMetadataOptions.BindsTwoWayByDefault, CurrentItemPropertyChanged));
+
+        private static void CurrentItemPropertyChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
         {
-            get => (bool)GetValue(IsOpenProp); 
-            set
+            if (d is PlaylistViewer instance)
             {
-                SetValue(IsOpenProp, value);
-                PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(IsOpen)));
+                instance.RefreshList((string)e.NewValue);
             }
         }
 
-        public ObservableCollection<Item> Playlist { get; set; } = new ObservableCollection<Item>()
+        public string CurrentItem { get => (string)GetValue(CurrentItemProp); set => SetValue(CurrentItemProp, value); }
+
+        public static readonly DependencyProperty ItemsSourceProp =
+            DependencyProperty.Register("ItemsSource", typeof(ObservableCollection<string>), typeof(PlaylistViewer),
+                new FrameworkPropertyMetadata(default(ICollection<string>), FrameworkPropertyMetadataOptions.BindsTwoWayByDefault, ItemsSourcePropertyChanged));
+
+        private static void ItemsSourcePropertyChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
         {
-            new Item("This is item 1 (a/b/c/d/e/f).g gggg", true),
-            new Item("Item 2", false),
-            new Item("Path/to/pppp", false),
-        };
+            if (d is PlaylistViewer instance)
+            {
+                var value = (ObservableCollection<string>)e.NewValue;
+                instance.Items = new ObservableCollection<Item>(value.Select((s) => new Item(s, s == instance.CurrentItem)));
+            }
+        }
+
+        public ICollection<string> ItemsSource { get => (ICollection<string>)GetValue(ItemsSourceProp); set => SetValue(ItemsSourceProp, value); }
+
+        #endregion Properties
+
+        public event PropertyChangedEventHandler PropertyChanged;
+        private ObservableCollection<Item> _items = new ObservableCollection<Item>();
+
+        // The wrapped list linked with input Item Source, used for UI purposes
+        public ObservableCollection<Item> Items { 
+            get => _items; 
+            private set
+            {
+                _items = value;
+                PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(Items)));
+            }
+        }
 
         public PlaylistViewer()
         {
@@ -75,6 +101,22 @@ namespace FlyleafLib.Controls.WPF
 
             var recaptureMouseEventHandler = new MouseEventHandler(Recapture);
             (FindName("ListBox") as ListBox)?.AddHandler(Mouse.LostMouseCaptureEvent, recaptureMouseEventHandler);
+        }
+
+        public void RefreshList(string current)
+        {
+            for (var i = 0; i < Items.Count; i++)
+            {
+                var p = Items[i];
+                if (p.Name == current && !p.IsSelected)
+                {
+                    Items[i] = new Item(current, true); // highlight current item
+                }
+                if (p.Name != current && p.IsSelected)
+                {
+                    Items[i] = new Item(p.Name, false); // unselect previous highlighted item
+                }
+            }
         }
 
         private void Collapse(object sender, MouseButtonEventArgs e)
@@ -95,24 +137,15 @@ namespace FlyleafLib.Controls.WPF
         private void ListViewCrossIcon_MouseDown(object sender, MouseButtonEventArgs e)
         {
             var selected = (Item)((PackIcon)sender).Tag; // used the Tag property as a way to store data in xaml
-            Playlist.Remove(selected);
+            Items.Remove(selected);
+            ItemsSource?.Remove(selected.Name);
         }
 
         private void ListViewItem_MouseDown(object sender, MouseButtonEventArgs e)
         {
             var selected = ((TextBlock)sender).Text;
-            for (var i = 0; i < Playlist.Count; i++)
-            {
-                var p = Playlist[i];
-                if (p.Name == selected && !p.IsSelected)
-                {
-                    Playlist[i] = new Item(selected, true); // highlight selected item
-                }
-                if (p.Name != selected && p.IsSelected)
-                {
-                    Playlist[i] = new Item(p.Name, false); // unselect current highlighted item
-                }
-            } 
+            RefreshList(selected);
+            CurrentItem = selected;
         }
     }
 }

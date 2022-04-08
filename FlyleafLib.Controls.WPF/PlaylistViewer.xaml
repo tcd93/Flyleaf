@@ -30,7 +30,7 @@
     <Grid DataContext="{Binding ElementName=PlaylistViewerControl}">
         <materialDesign:DrawerHost IsLeftDrawerOpen="{Binding IsOpen}" LeftDrawerBackground="Transparent">
             <materialDesign:DrawerHost.LeftDrawerContent>
-                <ListBox ItemsSource="{Binding Playlist}" x:Name="ListBox">
+                <ListBox ItemsSource="{Binding Items}" x:Name="ListBox">
                     <ListBox.ItemTemplate>
                         <DataTemplate>
                             <DockPanel LastChildFill="False">

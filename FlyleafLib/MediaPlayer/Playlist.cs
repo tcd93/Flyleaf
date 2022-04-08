@@ -11,9 +11,8 @@ namespace FlyleafLib.MediaPlayer
         private readonly Player player;
 
         private string _path = String.Empty;
-        private string current;
-        private List<string> playlist = new();
-        private readonly Stack<string> previous = new(); // played list
+        private List<string> playlist = new(); // remaining
+        private readonly List<string> previous = new(); // played list
 
         private readonly Random random = new();
 
@@ -34,6 +33,38 @@ namespace FlyleafLib.MediaPlayer
             set {
                 _openSideView = value;
                 PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(OpenSideView)));
+            }
+        }
+
+        private string _current;
+        /// <summary>
+        /// Bound by view model (PlaylistViewer.xaml), UI modifications are reflected here.
+        /// Setting this value plays the media immediately
+        /// </summary>
+        public string Current
+        {
+            get => _current;
+            set
+            {
+                if (value == _current) return;
+                _current = value;
+                if (_current != null) player.OpenAsync(_current);
+                PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(Current)));
+            }
+        }
+
+        private ObservableCollection<string> _items = new();
+        /// <summary>
+        /// Bound by view model (PlaylistViewer.xaml), UI modifications are reflected here
+        /// </summary>
+        public ObservableCollection<string> Items { 
+            get => _items; 
+            set
+            {
+                _items = value;
+                Items.CollectionChanged -= Items_CollectionChanged;
+                Items.CollectionChanged += Items_CollectionChanged;
+                PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(Items)));
             }
         }
 
@@ -66,15 +97,29 @@ namespace FlyleafLib.MediaPlayer
             playlist = Utils.FindMovFilesInPath(_path)
                 .Where(media => Filters.All(filter => media.ToLower().Contains(filter.ToLower()))).ToList();
 
+            Items = new ObservableCollection<string>(playlist);
+
             if (playlist is not null && playlist.Count > 0)
             {
                 player.Log.Info($"[Playlist] Total items in queue: {playlist.Count}");
-                current = Properties.Settings.Default.Shuffled ? RandomPop() : Dequeue();
-                player.OpenAsync(current);
+                Current = Properties.Settings.Default.Shuffled ? RandomPop() : Dequeue();
             } else
             {
                 player.Log.Warn("No playlist in current playlist");
                 // TODO: update source to show error
+            }
+        }
+
+        private void Items_CollectionChanged(object sender, System.Collections.Specialized.NotifyCollectionChangedEventArgs e)
+        {
+            if (e.Action == System.Collections.Specialized.NotifyCollectionChangedAction.Remove && e.OldItems != null)
+            {
+                foreach (string changedItem in e.OldItems)
+                {
+                    playlist.Remove(changedItem);
+                    previous.Remove(changedItem);
+                    if (Current == changedItem) Current = null;
+                }
             }
         }
 
@@ -89,13 +134,12 @@ namespace FlyleafLib.MediaPlayer
         public void PlayNext()
         {
             lock (playlist) {
-                if (playlist.Count == 0 || current is null)
+                if (playlist.Count == 0 || Current is null)
                 {
                     return;
                 }
-                previous.Push(current); // archive current item
-                current = Properties.Settings.Default.Shuffled ? RandomPop() : Dequeue();
-                player.OpenAsync(current);
+                previous.Add(Current); // archive current item
+                Current = Properties.Settings.Default.Shuffled ? RandomPop() : Dequeue();
             }
         }
 
@@ -107,13 +151,13 @@ namespace FlyleafLib.MediaPlayer
             }
             lock (previous)
             {
-                if (previous.Count == 0 || current is null)
+                if (previous.Count == 0 || Current is null)
                 {
                     return;
                 }
-                playlist.Insert(0, current); // put current item back into front queue
-                current = previous.Pop();
-                player.OpenAsync(current);
+                playlist.Insert(0, Current); // put current item back into front queue
+                Current = previous[previous.Count - 1];
+                previous.RemoveAt(previous.Count - 1);
             }
         }
 
