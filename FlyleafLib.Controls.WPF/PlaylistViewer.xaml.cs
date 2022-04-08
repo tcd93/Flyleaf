@@ -86,6 +86,7 @@ namespace FlyleafLib.Controls.WPF
 
         public event PropertyChangedEventHandler PropertyChanged;
         private ObservableCollection<Item> _items = new ObservableCollection<Item>();
+        private ListBox listBox;
 
         // The wrapped list linked with input Item Source, used for UI purposes
         public ObservableCollection<Item> Items { 
@@ -103,7 +104,8 @@ namespace FlyleafLib.Controls.WPF
             Mouse.AddPreviewMouseUpOutsideCapturedElementHandler(this, new MouseButtonEventHandler(Collapse));
 
             var recaptureMouseEventHandler = new MouseEventHandler(Recapture);
-            (FindName("ListBox") as ListBox)?.AddHandler(Mouse.LostMouseCaptureEvent, recaptureMouseEventHandler);
+            listBox = FindName("ListBox") as ListBox;
+            listBox?.AddHandler(Mouse.LostMouseCaptureEvent, recaptureMouseEventHandler);
         }
 
         public void RefreshList(string current)
@@ -114,6 +116,7 @@ namespace FlyleafLib.Controls.WPF
                 if (p.Name == current && !p.IsSelected)
                 {
                     Items[i] = new Item(current, true); // highlight current item
+                    listBox?.ScrollIntoView(Items[i]);
                 }
                 if (p.Name != current && p.IsSelected)
                 {
@@ -125,7 +128,11 @@ namespace FlyleafLib.Controls.WPF
         private void Collapse(object sender, MouseButtonEventArgs e)
         {
             if (e.OriginalSource == this)
+            {
                 IsOpen = false;
+                var currentItem = Items.Where(i => i.Name == CurrentItem).FirstOrDefault();
+                listBox?.ScrollIntoView(currentItem);
+            }
         }
 
         // Clicking child elements inside this will make any mouse capture to lose effects due to the bubbling nature,
@@ -147,9 +154,9 @@ namespace FlyleafLib.Controls.WPF
 
         private void ListViewItem_MouseDown(object sender, MouseButtonEventArgs e)
         {
-            var selected = (string)((TextBlock)sender).Tag;
-            RefreshList(selected);
-            CurrentItem = selected;
+            var selected = (Item)((TextBlock)sender).Tag;
+            RefreshList(selected.Name);
+            CurrentItem = selected.Name;
         }
     }
 
