@@ -124,7 +124,8 @@ namespace FlyleafLib.Controls.WPF
 
         private void Collapse(object sender, MouseButtonEventArgs e)
         {
-            IsOpen = false;
+            if (e.OriginalSource == this)
+                IsOpen = false;
         }
 
         // Clicking child elements inside this will make any mouse capture to lose effects due to the bubbling nature,
