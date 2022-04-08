@@ -1,9 +1,12 @@
 ﻿using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
+using System.Globalization;
+using System.IO;
 using System.Linq;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Data;
 using System.Windows.Input;
 using MaterialDesignThemes.Wpf;
 
@@ -143,9 +146,26 @@ namespace FlyleafLib.Controls.WPF
 
         private void ListViewItem_MouseDown(object sender, MouseButtonEventArgs e)
         {
-            var selected = ((TextBlock)sender).Text;
+            var selected = (string)((TextBlock)sender).Tag;
             RefreshList(selected);
             CurrentItem = selected;
+        }
+    }
+
+    public class GetFileNameFromPath : IValueConverter
+    {
+        public object Convert(object value, System.Type targetType, object parameter, CultureInfo culture)
+        {
+            if (value != null && value is string file)
+            {
+                return Path.GetFileName(file);
+            }
+            return "";
+        }
+
+        public object ConvertBack(object value, System.Type targetType, object parameter, CultureInfo culture)
+        {
+            throw new System.NotImplementedException();
         }
     }
 }
