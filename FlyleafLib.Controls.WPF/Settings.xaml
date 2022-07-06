@@ -398,7 +398,8 @@
                                 <ComboBox Grid.Row="6" Grid.Column="1" ItemsSource="{Binding Source={StaticResource ZeroCopyEnum}}" SelectedItem="{Binding Config.Decoder.ZeroCopy}"/>
 
                                 <TextBlock Grid.Row="7" Text="Decoder Threads" VerticalAlignment="Center"/>
-                                <TextBox Grid.Row="7" Grid.Column="1" Style="{StaticResource FLTextboxNP}" Text="{Binding Config.Decoder.VideoThreads, UpdateSourceTrigger=Explicit}"/>
+                                <TextBox Grid.Row="7" Grid.Column="1" Style="{StaticResource 
+                                    }" Text="{Binding Config.Decoder.VideoThreads, UpdateSourceTrigger=Explicit}"/>
 
                                 <TextBlock Grid.Row="8" Text="HDR to SDR Method" VerticalAlignment="Center"/>
                                 <ComboBox Grid.Row="8" Grid.Column="1" ItemsSource="{Binding Source={StaticResource HDRtoSDRMethodEnum}}" SelectedItem="{Binding Config.Video.HDRtoSDRMethod}"/>

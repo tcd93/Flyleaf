@@ -36,19 +36,25 @@
             <Style TargetType="materialDesign:PackIcon">
                 <Setter Property="Foreground" Value="{DynamicResource SecondaryHueMidBrush}"/>
             </Style>
-            
+
+            <Style x:Key="FLTextbox" TargetType="{x:Type TextBox}" BasedOn="{StaticResource MaterialDesignTextBox}">
+                <Setter Property="Margin" Value="0 10 10 10"/>
+                <Setter Property="VerticalAlignment" Value="Center"/>
+            </Style>
+
         </ResourceDictionary>
     </UserControl.Resources>
     <Grid>
+        <Border BorderThickness="1" BorderBrush="{DynamicResource PrimaryHueMidBrush}"></Border>
         <materialDesign:DialogHost DialogTheme="Inherit">
             <StackPanel Margin="10" Orientation="Vertical" Width="400">
                 <DockPanel>
                     <Button DockPanel.Dock="Right" Padding="1" MinWidth="40" Content="{materialDesign:PackIcon Kind=DotsHorizontal, Size=24}" 
                             Command="{Binding Player.Commands.OpenFromFolderDialog}"/>
-                    <TextBox x:Name="Directory" MinWidth="200" Margin="0 10 10 10" Text="{Binding Player.Playlist.Path, UpdateSourceTrigger=PropertyChanged}"/>
+                    <TextBox x:Name="Directory" Text="{Binding Player.Playlist.Path, UpdateSourceTrigger=PropertyChanged}" Style="{StaticResource FLTextbox}" MinWidth="200"/>
                 </DockPanel>
 
-                <Border BorderThickness="1" BorderBrush="{DynamicResource PrimaryHueMidBrush}" Padding="0,4,0,4">
+                <Border Padding="0,4,0,4">
                     <ItemsControl ScrollViewer.HorizontalScrollBarVisibility="Disabled">
                         <ItemsControl.Resources>
                             <CollectionViewSource x:Key="source_workaround" Source="{Binding Player.Playlist.Filters}" />
@@ -65,8 +71,8 @@
 
                             <DataTemplate DataType="{x:Type sys:Boolean}">
                                 <Grid Margin="4">
-                                    <TextBox VerticalAlignment="Center" BorderBrush="Transparent"
-                                             PreviewKeyDown="FilterTextBox_KeyDown" x:Name="TextBoxFilter"
+                                    <TextBox VerticalAlignment="Center"
+                                             PreviewKeyDown="FilterTextBox_KeyDown" x:Name="TextBoxFilter" Style="{StaticResource FLTextbox}"
                                              materialDesign:TextFieldAssist.DecorationVisibility="Hidden" />
                                     <!--placeholder for textbox-->
                                     <TextBlock IsHitTestVisible="False" Text="Press TAB to add filters" VerticalAlignment="Center" Foreground="DarkGray">
