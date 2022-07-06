@@ -27,6 +27,7 @@ namespace FlyleafLib.Controls.WPF
                 IsSelected = isSelected;
             }
             public string Name { get; }
+            public string ShortName { get => Path.GetFileName(Name); }
             public bool IsSelected { get; }
         }
 
@@ -155,14 +156,14 @@ namespace FlyleafLib.Controls.WPF
 
         private void ListViewItem_MouseDown(object sender, MouseButtonEventArgs e)
         {
-            var selected = (Item)((TextBlock)sender).Tag;
-            RefreshList(selected.Name);
-            CurrentItem = selected.Name;
+            string selected = (string)((TextBlock)sender).Tag; // full path name
+            RefreshList(selected);
+            CurrentItem = selected;
         }
 
         private void TextBlock_ToolTipOpening(object sender, ToolTipEventArgs e)
         {
-            var selected = ((TextBlock)sender).Text;
+            var selected = (string)((TextBlock)sender).Tag; // full path name
             var fileInfo = new FileInfo(selected);
             ((TextBlock)sender).ToolTip = Math.Round(fileInfo.Length / 1024.0 / 1024.0, 2) + " MB";
         }

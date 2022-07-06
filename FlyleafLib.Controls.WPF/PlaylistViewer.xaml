@@ -36,7 +36,7 @@
                     <ListBox.ItemTemplate>
                         <DataTemplate>
                             <DockPanel LastChildFill="False">
-                                <TextBlock Text="{Binding Name}" VerticalAlignment="Center" Width="150" TextTrimming="CharacterEllipsis"
+                                <TextBlock Text="{Binding ShortName}" Tag="{Binding Name}" VerticalAlignment="Center" Width="150" TextTrimming="CharacterEllipsis"
                                            MouseDown="ListViewItem_MouseDown"
                                            ToolTipOpening="TextBlock_ToolTipOpening" ToolTip=""/>
                                 <Separator/>
