@@ -24,6 +24,34 @@
             <Style TargetType="{x:Type ListBoxItem}" BasedOn="{StaticResource MaterialDesignListBoxItem}">
                 <Setter Property="Background" Value="Transparent"></Setter>
             </Style>
+
+            <Style x:Key="DeleteIconButton" TargetType="Button">
+                <Style.Triggers>
+                    <Trigger Property="IsMouseOver" Value="True">
+                        <Setter Property="Template">
+                            <Setter.Value>
+                                <ControlTemplate TargetType="Button">
+                                    <Grid Background="{TemplateBinding Background}">
+                                        <ContentPresenter Content="{materialDesign:PackIcon Kind=DeleteEmptyOutLine}"/>
+                                    </Grid>
+                                </ControlTemplate>
+                            </Setter.Value>
+                        </Setter>
+                    </Trigger>
+                </Style.Triggers>
+                
+                <Setter Property="Background" Value="Transparent" />
+                <Setter Property="Template">
+                    <Setter.Value>
+                        <ControlTemplate TargetType="Button">
+                            <Grid Background="{TemplateBinding Background}">
+                                <ContentPresenter Content="{materialDesign:PackIcon Kind=Delete}"/>
+                            </Grid>
+                        </ControlTemplate>
+                    </Setter.Value>
+                </Setter>
+                <!--<Setter Property="Content" Value="{materialDesign:PackIcon Kind=Delete}"/>-->
+            </Style>
         </ResourceDictionary>
     </UserControl.Resources>
     <Grid DataContext="{Binding ElementName=PlaylistViewerControl}">
@@ -35,24 +63,30 @@
                     </ListBox.Resources>
                     <ListBox.ItemTemplate>
                         <DataTemplate>
-                            <DockPanel LastChildFill="False">
-                                <TextBlock Text="{Binding ShortName}" Tag="{Binding Name}" VerticalAlignment="Center" Width="150" TextTrimming="CharacterEllipsis"
+                            <Grid Width="300">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="18*"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Text="{Binding ShortName}" Tag="{Binding Name}" TextTrimming="CharacterEllipsis"
                                            MouseDown="ListViewItem_MouseDown"
-                                           ToolTipOpening="TextBlock_ToolTipOpening" ToolTip=""/>
-                                <Separator/>
-                                <materialDesign:PackIcon Padding="8,0,0,0" DockPanel.Dock="Right" Kind="CloseBoxOutline" Tag="{Binding}"
-                                                         MouseDown="ListViewCrossIcon_MouseDown" Width="22" Height="22" />
-                            </DockPanel>
+                                           ToolTipOpening="TextBlock_ToolTipOpening" ToolTip=""
+                                           Grid.Column="0"/>
+                                <Button Grid.Column="1" Padding="0" Style="{StaticResource DeleteIconButton}"
+                                        PreviewMouseDown="ListViewCrossIcon_MouseDown" Tag="{Binding}" />
+
+                            </Grid>
                         </DataTemplate>
                     </ListBox.ItemTemplate>
                     <ListBox.ItemContainerStyle>
                         <Style TargetType="ListBoxItem" BasedOn="{StaticResource MaterialDesignListBoxItem}">
                             <Style.Triggers>
                                 <DataTrigger Binding="{Binding IsSelected}" Value="True">
-                                    <Setter Property="BorderThickness" Value="1" />
                                     <Setter Property="BorderBrush" Value="{DynamicResource SecondaryHueLightBrush}" />
                                 </DataTrigger>
                             </Style.Triggers>
+                            <Setter Property="BorderThickness" Value="1" />
+                            <Setter Property="BorderBrush" Value="Transparent" />
                             <Setter Property="Padding" Value="4,8,4,8"/>
                         </Style>
                     </ListBox.ItemContainerStyle>

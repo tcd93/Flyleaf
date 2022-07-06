@@ -149,7 +149,7 @@ namespace FlyleafLib.Controls.WPF
 
         private void ListViewCrossIcon_MouseDown(object sender, MouseButtonEventArgs e)
         {
-            var selected = (Item)((PackIcon)sender).Tag; // used the Tag property as a way to store data in xaml
+            var selected = (Item)((Button)sender).Tag; // used the Tag property as a way to store data in xaml
             Items.Remove(selected);
             ItemsSource?.Remove(selected.Name);
         }
