@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Globalization;
@@ -158,22 +159,12 @@ namespace FlyleafLib.Controls.WPF
             RefreshList(selected.Name);
             CurrentItem = selected.Name;
         }
-    }
 
-    public class GetFileNameFromPath : IValueConverter
-    {
-        public object Convert(object value, System.Type targetType, object parameter, CultureInfo culture)
+        private void TextBlock_ToolTipOpening(object sender, ToolTipEventArgs e)
         {
-            if (value != null && value is string file)
-            {
-                return Path.GetFileName(file);
-            }
-            return "";
-        }
-
-        public object ConvertBack(object value, System.Type targetType, object parameter, CultureInfo culture)
-        {
-            throw new System.NotImplementedException();
+            var selected = ((TextBlock)sender).Text;
+            var fileInfo = new FileInfo(selected);
+            ((TextBlock)sender).ToolTip = Math.Round(fileInfo.Length / 1024.0 / 1024.0, 2) + " MB";
         }
     }
 }
