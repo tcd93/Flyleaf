@@ -116,9 +116,17 @@ namespace FlyleafLib.MediaPlayer
             {
                 foreach (string changedItem in e.OldItems)
                 {
+                    if (Current == changedItem)
+                    {
+                        PlayNext();
+                    }
+                    Microsoft.VisualBasic.FileIO.FileSystem.DeleteFile(changedItem,
+                            Microsoft.VisualBasic.FileIO.UIOption.OnlyErrorDialogs,
+                            Microsoft.VisualBasic.FileIO.RecycleOption.SendToRecycleBin,
+                            Microsoft.VisualBasic.FileIO.UICancelOption.DoNothing);
+
                     playlist.Remove(changedItem);
                     previous.Remove(changedItem);
-                    if (Current == changedItem) Current = null;
                 }
             }
         }
