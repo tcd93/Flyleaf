@@ -36,8 +36,10 @@
                     <ListBox.ItemTemplate>
                         <DataTemplate>
                             <DockPanel LastChildFill="False">
-                                <TextBlock Text="{Binding Name, Converter={StaticResource GetFileNameFromPath}}" VerticalAlignment="Center" Width="250" TextTrimming="CharacterEllipsis"
-                                           Margin="4,0,4,0" Tag="{Binding}" MouseDown="ListViewItem_MouseDown"/>
+                                <TextBlock Text="{Binding Name}" VerticalAlignment="Center" Width="150" TextTrimming="CharacterEllipsis"
+                                           MouseDown="ListViewItem_MouseDown"
+                                           ToolTipOpening="TextBlock_ToolTipOpening" ToolTip=""/>
+                                <Separator/>
                                 <materialDesign:PackIcon Padding="8,0,0,0" DockPanel.Dock="Right" Kind="CloseBoxOutline" Tag="{Binding}"
                                                          MouseDown="ListViewCrossIcon_MouseDown" Width="22" Height="22" />
                             </DockPanel>
