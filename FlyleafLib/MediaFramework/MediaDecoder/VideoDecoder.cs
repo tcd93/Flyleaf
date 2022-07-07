@@ -61,22 +61,42 @@ namespace FlyleafLib.MediaFramework.MediaDecoder
         List<VideoFrame>                curReverseVideoFrames   = new List<VideoFrame>();
         int                             curReversePacketPos     = 0;
 
-        public VideoDecoder(Config config, Control control = null, int uniqueId = -1, bool initVA = true) : base(config, uniqueId)
+        static VideoDecoder()
+        {
+            if (Engine.FFmpeg.IsVer5)
+            {
+                HW_PIX_FMT              -= 2;
+                //AV_PIX_FMT_P010LE       -= 2;
+                //AV_PIX_FMT_P010BE       -= 2;
+                //AV_PIX_FMT_YUV420P10LE  -= 2;
+            }
+        }
+
+        public VideoDecoder(Config config, int uniqueId = -1) : base(config, uniqueId)
         {
             getHWformat = new AVCodecContext_get_format(get_format);
+        }
 
-            if (initVA)
-            {
+        public void CreateRenderer(Control control = null)
+        {
+            if (Renderer == null)
                 Renderer = new Renderer(this, control, UniqueId);
-                Renderer.Initialize();
-                Disposed = false;
-            }
+            else
+                Renderer.SetControl(control);
+
+            Disposed = false;
         }
 
         #region Video Acceleration (Should be disposed seperately)
         const int               AV_CODEC_HW_CONFIG_METHOD_HW_DEVICE_CTX = 0x01;
         const AVHWDeviceType    HW_DEVICE   = AVHWDeviceType.AV_HWDEVICE_TYPE_D3D11VA; // To fully support Win7/8 should consider AV_HWDEVICE_TYPE_DXVA2
-        const AVPixelFormat     HW_PIX_FMT  = AVPixelFormat.AV_PIX_FMT_D3D11;
+
+        // We can't use AVPixelFormat enum as it is different between ffmpeg v4 and v5 (two new entries after 44 so we need -2 for >46 )
+        static int HW_PIX_FMT               = (int)AVPixelFormat.AV_PIX_FMT_D3D11;
+        //static int AV_PIX_FMT_P010LE        = (int)AVPixelFormat.AV_PIX_FMT_P010LE;
+        //static int AV_PIX_FMT_P010BE        = (int)AVPixelFormat.AV_PIX_FMT_P010BE;
+        //static int AV_PIX_FMT_YUV420P10LE   = (int)AVPixelFormat.AV_PIX_FMT_YUV420P10LE;
+
         internal ID3D11Texture2D
                                 textureFFmpeg;
         AVCodecContext_get_format 
@@ -92,8 +112,8 @@ namespace FlyleafLib.MediaFramework.MediaDecoder
                 AVCodecHWConfig* config = avcodec_get_hw_config(codec, i);
                 if (config == null) break;
                 if ((config->methods & AV_CODEC_HW_CONFIG_METHOD_HW_DEVICE_CTX) == 0 || config->pix_fmt == AVPixelFormat.AV_PIX_FMT_NONE) continue;
-
-                if (config->device_type == HW_DEVICE && config->pix_fmt == HW_PIX_FMT) return true;
+                
+                if (config->device_type == HW_DEVICE && (int)config->pix_fmt == HW_PIX_FMT) return true;
             }
 
             return false;
@@ -143,7 +163,7 @@ namespace FlyleafLib.MediaFramework.MediaDecoder
             {
                 if (CanTrace) Log.Trace($"{*pix_fmts}");
 
-                if (*pix_fmts == AVPixelFormat.AV_PIX_FMT_D3D11)
+                if ((int)(*pix_fmts) == HW_PIX_FMT)
                 {
                     foundHWformat = true;
                     break;
@@ -163,7 +183,7 @@ namespace FlyleafLib.MediaFramework.MediaDecoder
 
                 textDesc.Format = textureFFmpeg.Description.Format;
 
-                return AVPixelFormat.AV_PIX_FMT_D3D11;
+                return (AVPixelFormat)HW_PIX_FMT;
             }
 
             lock (lockCodecCtx)
@@ -206,11 +226,29 @@ namespace FlyleafLib.MediaFramework.MediaDecoder
                 {
                     Log.Warn($"Codec changed {VideoStream.CodecID} {VideoStream.Width}x{VideoStream.Height} => {codecCtx->codec_id} {codecCtx->width}x{codecCtx->height}");
 
+                    // Change can be seen only through codecCtx (not AVStreams) - codecCtx changes byitself (we can't destory it and re-create it)
+                    //VideoStream.Refresh(); // No reason as AVStreams will be the same
+                    textDesc.Width      = codecCtx->width;
+                    textDesc.Height     = codecCtx->height;
+                    textDescUV.Width    = codecCtx->width  >> VideoStream.PixelFormatDesc->log2_chroma_w;
+                    textDescUV.Height   = codecCtx->height >> VideoStream.PixelFormatDesc->log2_chroma_h;
                     VideoStream.Width   = codecCtx->width;
                     VideoStream.Height  = codecCtx->height;
+
+                    var gcd = Utils.GCD(VideoStream.Width, VideoStream.Height);
+                    if (gcd != 0)
+                        VideoStream.AspectRatio = new AspectRatio(VideoStream.Width / gcd , VideoStream.Height / gcd);
+
+                    VideoStream.FPS             = av_q2d(codecCtx->framerate) > 0 ? av_q2d(codecCtx->framerate) : VideoStream.FPS;
+                    VideoStream.FrameDuration   = VideoStream.FPS > 0 ? (long) (10000000 / VideoStream.FPS) : 0;
+                    //VideoStream.Timebase    = av_q2d(codecCtx->time_base) * 10000.0 * 1000.0;
+                    //VideoStream.TotalFrames     = VideoStream.AVStream->duration > 0 && VideoStream.FrameDuration > 0 ? (int) (AVStream->duration * VideoStream.Timebase / VideoStream.FrameDuration) : (int) (Demuxer.Duration / VideoStream.FrameDuration);
+
+                    Renderer?.FrameResized();
+                    CodecChanged?.Invoke(this);
                 }
 
-                return AVPixelFormat.AV_PIX_FMT_D3D11;
+                return (AVPixelFormat)HW_PIX_FMT;
             }
         }
         private int ShouldAllocateNew() // 0: No, 1: Yes, 2: Yes+Codec Changed
@@ -220,21 +258,23 @@ namespace FlyleafLib.MediaFramework.MediaDecoder
 
             var t2 = (AVHWFramesContext*) hwframes->data;
 
-            //if (codecCtx->codec_id != VideoStream.CodecID)
-                //return 2;
-
             if (codecCtx->coded_width != t2->width)
                 return 2;
 
             if (codecCtx->coded_height != t2->height)
                 return 2;
 
-            var fmt = codecCtx->sw_pix_fmt == AVPixelFormat.AV_PIX_FMT_YUV420P10LE ? AVPixelFormat.AV_PIX_FMT_P010LE : (codecCtx->sw_pix_fmt == AVPixelFormat.AV_PIX_FMT_P010BE ? AVPixelFormat.AV_PIX_FMT_P010BE : AVPixelFormat.AV_PIX_FMT_NV12);
-            if (fmt != t2->sw_format)
-                return 2;
+            // TBR: Codec changed (seems ffmpeg changes codecCtx by itself
+            //if (codecCtx->codec_id != VideoStream.CodecID)
+            //    return 2;
+
+            //var fmt = codecCtx->sw_pix_fmt == (AVPixelFormat)AV_PIX_FMT_YUV420P10LE ? (AVPixelFormat)AV_PIX_FMT_P010LE : (codecCtx->sw_pix_fmt == (AVPixelFormat)AV_PIX_FMT_P010BE ? (AVPixelFormat)AV_PIX_FMT_P010BE : AVPixelFormat.AV_PIX_FMT_NV12);
+            //if (fmt != t2->sw_format)
+            //    return 2;
 
             return 0;
         }
+
         private int AllocateHWFrames()
         {
             if (hwframes != null)
@@ -246,7 +286,7 @@ namespace FlyleafLib.MediaFramework.MediaDecoder
             if (codecCtx->hw_frames_ctx != null)
                 av_buffer_unref(&codecCtx->hw_frames_ctx);
 
-            if (avcodec_get_hw_frames_parameters(codecCtx, codecCtx->hw_device_ctx, AVPixelFormat.AV_PIX_FMT_D3D11, &codecCtx->hw_frames_ctx) != 0)
+            if (avcodec_get_hw_frames_parameters(codecCtx, codecCtx->hw_device_ctx, (AVPixelFormat)HW_PIX_FMT, &codecCtx->hw_frames_ctx) != 0)
                 return -1;
 
             AVHWFramesContext* hw_frames_ctx = (AVHWFramesContext*)(codecCtx->hw_frames_ctx->data);
@@ -312,7 +352,7 @@ namespace FlyleafLib.MediaFramework.MediaDecoder
             else
                 Log.Debug("VA Disabled");
 
-            int bits = 0;
+            int bits = 8;
             try
             {
                 bits = VideoStream.PixelFormatDesc->comp.ToArray()[0].depth;
@@ -361,7 +401,7 @@ namespace FlyleafLib.MediaFramework.MediaDecoder
                 if (Config.Decoder.AllowProfileMismatch)
                     codecCtx->hwaccel_flags |= AV_HWACCEL_FLAG_ALLOW_PROFILE_MISMATCH;
 
-                codecCtx->pix_fmt = AVPixelFormat.AV_PIX_FMT_D3D11;
+                codecCtx->pix_fmt = (AVPixelFormat)HW_PIX_FMT;
                 codecCtx->get_format = getHWformat;
                 disableGetFormat = false;
             }
@@ -442,7 +482,7 @@ namespace FlyleafLib.MediaFramework.MediaDecoder
                                 AVPacket* drainPacket = av_packet_alloc();
                                 drainPacket->data = null;
                                 drainPacket->size = 0;
-                                demuxer.VideoPackets.Enqueue((IntPtr)drainPacket);
+                                demuxer.VideoPackets.Enqueue(drainPacket);
                             }
                             
                             break;
@@ -488,8 +528,7 @@ namespace FlyleafLib.MediaFramework.MediaDecoder
                 lock (lockCodecCtx)
                 {
                     if (Status == Status.Stopped || demuxer.VideoPackets.Count == 0) continue;
-                    demuxer.VideoPackets.TryDequeue(out IntPtr pktPtr);
-                    packet = (AVPacket*) pktPtr;
+                    packet = demuxer.VideoPackets.Dequeue();
 
                     if (isRecording)
                     {
@@ -531,8 +570,10 @@ namespace FlyleafLib.MediaFramework.MediaDecoder
                         ret = avcodec_receive_frame(codecCtx, frame);
                         if (ret != 0) { av_frame_unref(frame); break; }
 
-                        frame->pts = frame->best_effort_timestamp == AV_NOPTS_VALUE ? frame->pts : frame->best_effort_timestamp;
-                        if (frame->pts == AV_NOPTS_VALUE) { av_frame_unref(frame); continue; }
+                        if (frame->best_effort_timestamp != AV_NOPTS_VALUE)
+                            frame->pts = frame->best_effort_timestamp;
+                        else if (frame->pts == AV_NOPTS_VALUE)
+                            { av_frame_unref(frame); continue; }
 
                         if (keyFrameRequired)
                         {
@@ -696,8 +737,10 @@ namespace FlyleafLib.MediaFramework.MediaDecoder
                             ret = avcodec_receive_frame(codecCtx, frame);
                             if (ret != 0) { av_frame_unref(frame); break; }
 
-                            frame->pts = frame->best_effort_timestamp == AV_NOPTS_VALUE ? frame->pts : frame->best_effort_timestamp;
-                            if (frame->pts == AV_NOPTS_VALUE) { av_frame_unref(frame); continue; }
+                            if (frame->best_effort_timestamp != AV_NOPTS_VALUE)
+                                frame->pts = frame->best_effort_timestamp;
+                            else if (frame->pts == AV_NOPTS_VALUE)
+                                { av_frame_unref(frame); continue; }
 
                             bool shouldProcess = curReverseVideoPackets.Count - curReversePacketPos < Config.Decoder.MaxVideoFrames;
 
@@ -718,7 +761,7 @@ namespace FlyleafLib.MediaFramework.MediaDecoder
                             avcodec_flush_buffers(codecCtx);
                             curReversePacketPos = 0;
 
-                            for (int i = curReverseVideoFrames.Count -1; i>=0; i--)
+                            for (int i=curReverseVideoFrames.Count -1; i>=0; i--)
                                 Frames.Enqueue(curReverseVideoFrames[i]);
 
                             curReverseVideoFrames.Clear();
@@ -931,7 +974,7 @@ namespace FlyleafLib.MediaFramework.MediaDecoder
                 ret = av_seek_frame(demuxer.FormatContext, -1, frameTimestamp / 10, AVSEEK_FLAG_FRAME | AVSEEK_FLAG_BACKWARD);
 
             demuxer.DisposePackets();
-            demuxer.UpdateCurTime();
+
             if (demuxer.Status == Status.Ended) demuxer.Status = Status.Stopped;
             if (ret < 0) return null; // handle seek error
             Flush();
@@ -944,15 +987,15 @@ namespace FlyleafLib.MediaFramework.MediaDecoder
             while (GetFrameNext(checkExtraFrames) == 0)
             {
                 // Skip frames before our actual requested frame
-                if ((long)(frame->best_effort_timestamp * VideoStream.Timebase) < frameTimestamp)
+                if ((long)(frame->pts * VideoStream.Timebase) < frameTimestamp)
                 {
-                    //Log($"[Skip] [pts: {frame->best_effort_timestamp}] [time: {Utils.TicksToTime((long)(frame->best_effort_timestamp * VideoStream.Timebase))}]");
+                    //Log.Debug($"[Skip] [pts: {frame->pts}] [time: {Utils.TicksToTime((long)(frame->pts * VideoStream.Timebase))}]");
                     av_frame_unref(frame);
                     checkExtraFrames = true;
                     continue; 
                 }
 
-                //Log($"[Found] [pts: {frame->best_effort_timestamp}] [time: {Utils.TicksToTime((long)(frame->best_effort_timestamp * VideoStream.Timebase))}] | {Utils.TicksToTime(VideoStream.StartTime + (index * VideoStream.FrameDuration))}");
+                //Log.Debug($"[Found] [pts: {frame->pts}] [time: {Utils.TicksToTime((long)(frame->pts * VideoStream.Timebase))}] | {Utils.TicksToTime(VideoStream.StartTime + (index * VideoStream.FrameDuration))}");
                 return ProcessVideoFrame(frame);
             }
 
@@ -989,10 +1032,9 @@ namespace FlyleafLib.MediaFramework.MediaDecoder
 
                 if (ret == 0)
                 {
-                    if (frame->best_effort_timestamp == AV_NOPTS_VALUE)
-                        frame->best_effort_timestamp = frame->pts;
-
-                    if (frame->best_effort_timestamp == AV_NOPTS_VALUE)
+                    if (frame->best_effort_timestamp != AV_NOPTS_VALUE)
+                        frame->pts = frame->best_effort_timestamp;
+                    else if (frame->pts == AV_NOPTS_VALUE)
                     {
                         av_frame_unref(frame);
                         return GetFrameNext(true);
@@ -1031,10 +1073,9 @@ namespace FlyleafLib.MediaFramework.MediaDecoder
                     return ret;
                 }
 
-                if (frame->best_effort_timestamp == AV_NOPTS_VALUE)
-                    frame->best_effort_timestamp = frame->pts;
-
-                if (frame->best_effort_timestamp == AV_NOPTS_VALUE)
+                if (frame->best_effort_timestamp != AV_NOPTS_VALUE)
+                    frame->pts = frame->best_effort_timestamp;
+                else if (frame->pts == AV_NOPTS_VALUE)
                 {
                     av_frame_unref(frame);
                     return GetFrameNext(true);
@@ -1044,10 +1085,7 @@ namespace FlyleafLib.MediaFramework.MediaDecoder
             }
         }
 
-        public void DisposeVA()
-        {
-            Renderer?.Dispose();
-        }
+        public void DisposeVA() => Renderer?.Dispose();
         public void DisposeFrames()
         {
             while (!Frames.IsEmpty)
@@ -1106,9 +1144,6 @@ namespace FlyleafLib.MediaFramework.MediaDecoder
             lock (lockCodecCtx)
             {
                 DisposeFrames();
-
-                if (Renderer != null)
-                    DisposeFrame(Renderer.LastFrame);
 
                 if (codecCtx != null)
                 {

@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Windows;
 using System.Windows.Forms.Integration;
 using System.Windows.Input;
 
@@ -92,7 +93,7 @@ namespace FlyleafLib.MediaPlayer
             player.isAnyKeyDown = false;
 
             if (player.Config.Player.ActivityMode)
-                player.Activity.KeyboardTimestmap = DateTime.UtcNow.Ticks;
+                player.Activity.KeyboardTimestamp = DateTime.UtcNow.Ticks;
 
             if (key == Key.LeftAlt || key == Key.RightAlt || key == Key.LeftCtrl || key == Key.RightCtrl || key == Key.LeftShift || key == Key.RightShift)
                 return false;
@@ -118,14 +119,14 @@ namespace FlyleafLib.MediaPlayer
             if (!Config.Player.KeyBindings.Enabled || !Config.Player.KeyBindings.FlyleafWindow) return;
 
             //Log("WindowFront_KeyUp");
-            KeyUp(((FlyleafWindow)sender).VideoView.Player, e);
+            KeyUp(((VideoView)((Window)sender).Tag).Player, e);
         }
         private void WindowFront_KeyDown(object sender, KeyEventArgs e)
         {
             if (!Config.Player.KeyBindings.Enabled || !Config.Player.KeyBindings.FlyleafWindow) return;
 
             //Log("WindowFront_KeyDown");
-            KeyDown(((FlyleafWindow)sender).VideoView.Player, e);
+            KeyDown(((VideoView)((Window)sender).Tag).Player, e);
         }
 
         private void WinFormsHost_KeyUp(object sender, KeyEventArgs e)
@@ -180,6 +181,14 @@ namespace FlyleafLib.MediaPlayer
         Player player;
 
         public KeysConfig() { }
+
+        public KeysConfig Clone()
+        {
+            KeysConfig keys = (KeysConfig) MemberwiseClone();
+            keys.player = null;
+            keys.Keys = null;
+            return keys;
+        }
 
         internal void SetPlayer(Player player)
         {
@@ -311,6 +320,7 @@ namespace FlyleafLib.MediaPlayer
             Add(Key.V,                  KeyBindingAction.OpenFromClipboard, false, true);
             Add(Key.O,                  KeyBindingAction.OpenFromFileDialog);
             Add(Key.C,                  KeyBindingAction.CopyToClipboard, false, true);
+            Add(Key.C,                  KeyBindingAction.CopyItemToClipboard, false, false, true);
 
             Add(Key.Left,               KeyBindingAction.SeekBackward);
             Add(Key.Left,               KeyBindingAction.SeekBackward2, false, true);
@@ -348,18 +358,13 @@ namespace FlyleafLib.MediaPlayer
             Add(Key.Up,                 KeyBindingAction.VolumeUp);
             Add(Key.Down,               KeyBindingAction.VolumeDown);
 
-            // Affects master volume
-            //Add(Key.VolumeMute,         KeyBindingAction.ToggleMute);
-            //Add(Key.VolumeUp,           KeyBindingAction.VolumeUp);
-            //Add(Key.VolumeDown,         KeyBindingAction.VolumeDown);
-
             Add(Key.OemPlus,            KeyBindingAction.ZoomIn, false, true);
             Add(Key.OemMinus,           KeyBindingAction.ZoomOut, false, true);
 
             Add(Key.D0,                 KeyBindingAction.ResetAll);
             Add(Key.X,                  KeyBindingAction.Flush, false, true);
 
-            Add(Key.I,                  KeyBindingAction.ActivityForceIdle);
+            Add(Key.I,                  KeyBindingAction.ForceIdle);
             Add(Key.Escape,             KeyBindingAction.NormalScreen);
             Add(Key.Q,                  KeyBindingAction.Stop, false, true, false);
         }
@@ -368,8 +373,12 @@ namespace FlyleafLib.MediaPlayer
         {
             switch (action)
             {
-                case KeyBindingAction.ActivityForceIdle:
+                case KeyBindingAction.ForceIdle:
                     return player.Activity.ForceIdle;
+                case KeyBindingAction.ForceActive:
+                    return player.Activity.ForceActive;
+                case KeyBindingAction.ForceFullActive:
+                    return player.Activity.ForceFullActive;
 
                 case KeyBindingAction.AudioDelayAdd:
                     return player.Audio.DelayAdd;
@@ -416,6 +425,9 @@ namespace FlyleafLib.MediaPlayer
 
                 case KeyBindingAction.CopyToClipboard:
                     return player.CopyToClipboard;
+
+                case KeyBindingAction.CopyItemToClipboard:
+                    return player.CopyItemToClipboard;
 
                 case KeyBindingAction.Flush:
                     return player.Flush;
@@ -497,12 +509,14 @@ namespace FlyleafLib.MediaPlayer
         }
         private static HashSet<KeyBindingAction> isKeyUpBinding = new HashSet<KeyBindingAction>
         {
+            // TODO: Should Fire once one KeyDown and not again until KeyUp is fired (in case of Tasks keep track of already running actions?)
+
             // Having issues with alt/ctrl/shift (should save state of alt/ctrl/shift on keydown and not checked on keyup)
 
             //{ KeyBindingAction.OpenFromClipboard },
             { KeyBindingAction.OpenFromFileDialog },
             //{ KeyBindingAction.CopyToClipboard },
-            //{ KeyBindingAction.TakeSnapshot },
+            { KeyBindingAction.TakeSnapshot },
             { KeyBindingAction.NormalScreen },
             { KeyBindingAction.FullScreen },
             { KeyBindingAction.ToggleFullScreen },
@@ -524,7 +538,9 @@ namespace FlyleafLib.MediaPlayer
             { KeyBindingAction.ToggleSeekAccurate },
             { KeyBindingAction.SpeedAdd },
             { KeyBindingAction.SpeedRemove },
-            { KeyBindingAction.ActivityForceIdle }
+            { KeyBindingAction.ForceIdle },
+            { KeyBindingAction.ForceActive },
+            { KeyBindingAction.ForceFullActive }
         };
     }
     public class KeyBinding
@@ -555,13 +571,13 @@ namespace FlyleafLib.MediaPlayer
     public enum KeyBindingAction
     {
         Custom,
-        ActivityForceIdle,
+        ForceIdle, ForceActive, ForceFullActive,
 
         AudioDelayAdd, AudioDelayAdd2, AudioDelayRemove, AudioDelayRemove2, ToggleMute, VolumeUp, VolumeDown,
         SubtitlesDelayAdd, SubtitlesDelayAdd2, SubtitlesDelayRemove, SubtitlesDelayRemove2,
 
-        CopyToClipboard, OpenFromClipboard, OpenFromFileDialog, OpenFromFolderDialog,
-        Stop, Pause, Play, PlayNext, PlayPrevious, TogglePlayPause, ToggleReversePlayback, Flush,
+        CopyToClipboard, CopyItemToClipboard, OpenFromClipboard, OpenFromFileDialog, OpenFromFolderDialog,
+        Stop, Pause, Play, TogglePlayPause, ToggleReversePlayback, Flush,
         TakeSnapshot,
         NormalScreen, FullScreen, ToggleFullScreen,
 

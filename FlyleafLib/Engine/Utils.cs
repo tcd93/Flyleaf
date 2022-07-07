@@ -7,6 +7,7 @@ using System.Globalization;
 using System.IO;
 using System.IO.Compression;
 using System.Linq;
+using System.Net.Http;
 using System.Runtime.InteropServices;
 using System.Runtime.Serialization;
 using System.Text;
@@ -17,9 +18,6 @@ using System.Xml.Schema;
 using System.Xml.Serialization;
 
 using Microsoft.Win32;
-
-using FFmpeg.AutoGen;
-using static FFmpeg.AutoGen.ffmpeg;
 
 namespace FlyleafLib
 {
@@ -35,6 +33,7 @@ namespace FlyleafLib
         /// <param name="action"></param>
         public static void UI(Action action)
         {
+            //if (System.Windows.Application.Current == null) return; // Possible on App Exit but not really required to add it?
             System.Windows.Application.Current.Dispatcher.BeginInvoke(action, System.Windows.Threading.DispatcherPriority.DataBind);
         }
 
@@ -44,6 +43,7 @@ namespace FlyleafLib
         /// <param name="action"></param>
         public static void UIInvoke(Action action)
         {
+            // NOTE: Deadlocks will happen if we call this from a thread that we wait for it with EnsureThreadDone from an UI thread
             System.Windows.Application.Current.Dispatcher.Invoke(action);
         }
 
@@ -168,43 +168,60 @@ namespace FlyleafLib
 
             return dump;
         }
-        public static string GetUrlExtention(string url) { return url.LastIndexOf(".")  > 0 ? url.Substring(url.LastIndexOf(".") + 1) : ""; }
+        public static string GetUrlExtention(string url) { return url.LastIndexOf(".") > 0 ? url.Substring(url.LastIndexOf(".") + 1).ToLower() : ""; }
         public static List<Language> GetSystemLanguages()
         {
-            List<Language>  Languages  = new List<Language>();
-            Language        systemLang = Language.Get(CultureInfo.CurrentCulture.TwoLetterISOLanguageName);
-            if (systemLang.LanguageName != "English") Languages.Add(systemLang);
+            List<Language> Languages = new List<Language>();
+            if (CultureInfo.CurrentCulture.ThreeLetterISOLanguageName != "eng")
+                Languages.Add(Language.Get(CultureInfo.CurrentCulture));
 
             foreach (System.Windows.Forms.InputLanguage lang in System.Windows.Forms.InputLanguage.InstalledInputLanguages)
-                if (Language.Get(lang.Culture.TwoLetterISOLanguageName).ISO639 != systemLang.ISO639 && Language.Get(lang.Culture.TwoLetterISOLanguageName).LanguageName != "English") 
-                    Languages.Add(Language.Get(lang.Culture.TwoLetterISOLanguageName));
+                if (lang.Culture.ThreeLetterISOLanguageName != CultureInfo.CurrentCulture.ThreeLetterISOLanguageName && lang.Culture.ThreeLetterISOLanguageName != "eng") 
+                    Languages.Add(Language.Get(lang.Culture));
 
-            Languages.Add(Language.Get("English"));
+            Languages.Add(Language.English);
 
             return Languages;
         }
 
-        public static void EnsureThreadDone(Thread t, long maxMS = 15000, int minMS = 4) // Until Pause on live streams can be aborted must be > ReadLiveTimeout
+        public static bool ExtractSeasonEpisode(string text, out int season, out int episode)
         {
-            if (t == null || !t.IsAlive) return;
+            // Other possibilities "S01 Episode 03", "01x03"
 
-            if (t.ManagedThreadId == Thread.CurrentThread.ManagedThreadId)
-                return;
-                //{ Log($"Thread {t.Name} is not allowed to suicide!"); return; }
+            var res = Regex.Match(text, @"(^|[^a-z0-9])s(?<season>[0-9]{1,2})e(?<episode>[0-9]{1,2})($|[^a-z0-9])", RegexOptions.IgnoreCase);
 
-            long escapeInfinity = maxMS / minMS;
-
-            while (t != null && t.IsAlive && escapeInfinity > 0)
+            if (res.Groups["season"].Value != "" && res.Groups["episode"].Value != "")
             {
-                Thread.Sleep(minMS);
-                escapeInfinity--;
+                season = int.Parse(res.Groups["season"].Value);
+                episode = int.Parse(res.Groups["episode"].Value);
+
+                return true;
             }
 
-            if (t != null && t.IsAlive)
+            res = Regex.Match(text, @"(^|[^a-z0-9])Season[^a-z0-9]+(?<season>[0-9]{1,2}).*Episode[^a-z0-9]+(?<episode>[0-9]{1,2})($|[^a-z0-9])", RegexOptions.IgnoreCase);
+            
+            if (res.Groups["season"].Value != "" && res.Groups["episode"].Value != "")
             {
-                Log($"Thread {t.Name} did not finished properly!");
-                throw new Exception($"Thread {t.Name} did not finished properly!");
+                season = int.Parse(res.Groups["season"].Value);
+                episode = int.Parse(res.Groups["episode"].Value);
+
+                return true;
             }
+
+            res = Regex.Match(text, @"(^|[^a-z0-9])(?<season>[0-9]{1,2})x(?<episode>[0-9]{1,2})($|[^a-z0-9])", RegexOptions.IgnoreCase);
+            
+            if (res.Groups["season"].Value != "" && res.Groups["episode"].Value != "")
+            {
+                season = int.Parse(res.Groups["season"].Value);
+                episode = int.Parse(res.Groups["episode"].Value);
+
+                return true;
+            }
+
+            season = -1;
+            episode = -1;
+
+            return false;
         }
 
         public static string FindNextAvailableFile(string fileName)
@@ -279,6 +296,67 @@ namespace FlyleafLib
         }
 
         public static string GetUserDownloadPath() { try { return Registry.CurrentUser.OpenSubKey(@"Software\Microsoft\Windows\CurrentVersion\Explorer\User Shell Folders\").GetValue("{374DE290-123F-4565-9164-39C4925E467B}").ToString(); } catch (Exception) { return null; } }
+        public static string DownloadToString(string url, int timeoutMs = 30000)
+        {
+            try
+            {
+                using (HttpClient client = new HttpClient() { Timeout = TimeSpan.FromMilliseconds(timeoutMs) })
+                return client.GetAsync(url).Result.Content.ReadAsStringAsync().Result;
+            } catch (Exception e)
+            {
+                Log($"Download failed {e.Message} [Url: {(url != null ? url : "Null")}]");
+            }
+            
+            return null;
+        }
+
+        public static MemoryStream DownloadFile(string url, int timeoutMs = 30000)
+        {
+            MemoryStream ms = new MemoryStream();
+
+            try
+            {
+                using (HttpClient client = new HttpClient() { Timeout = TimeSpan.FromMilliseconds(timeoutMs) })
+                    client.GetAsync(url).Result.Content.CopyToAsync(ms).Wait();
+            } catch (Exception e)
+            {
+                Log($"Download failed {e.Message} [Url: {(url != null ? url : "Null")}]");
+            }
+
+            return ms;
+        }
+
+        public static bool DownloadFile(string url, string filename, int timeoutMs = 30000, bool overwrite = true)
+        {
+            try
+            {
+                using (HttpClient client = new HttpClient() { Timeout = TimeSpan.FromMilliseconds(timeoutMs) })
+                {
+                    using (FileStream fs = new FileStream(filename, overwrite ? FileMode.Create : FileMode.CreateNew))
+                        client.GetAsync(url).Result.Content.CopyToAsync(fs).Wait();
+
+                    return true;
+                }
+            } catch (Exception e)
+            {
+                Log($"Download failed {e.Message} [Url: {(url != null ? url : "Null")}, Path: {(filename != null ? filename : "Null")}]");
+            }
+
+            return false;
+        }
+        public static string FixFileUrl(string url)
+        {
+            try
+            {
+                if (url == null || url.Length < 5)
+                    return url;
+
+                if (url.Substring(0, 5).ToLower() == "file:")
+                    return (new Uri(url)).LocalPath;
+            } catch { }
+
+            return url;
+        }
 
         static List<PerformanceCounter> gpuCounters;
 
@@ -355,6 +433,11 @@ namespace FlyleafLib
         
         public static System.Windows.Media.Color WinFormsToWPFColor(System.Drawing.Color sColor) { return System.Windows.Media.Color.FromArgb(sColor.A, sColor.R, sColor.G, sColor.B); }
         public static System.Drawing.Color WPFToWinFormsColor(System.Windows.Media.Color wColor) { return System.Drawing.Color.FromArgb(wColor.A, wColor.R, wColor.G, wColor.B); }
+
+        public static System.Windows.Media.Color VorticeToWPFColor(Vortice.Mathematics.Color sColor) { return System.Windows.Media.Color.FromArgb(sColor.A, sColor.R, sColor.G, sColor.B); }
+        public static Vortice.Mathematics.Color WPFToVorticeColor(System.Windows.Media.Color wColor) { return new Vortice.Mathematics.Color(wColor.R, wColor.G, wColor.B, wColor.A); }
+
+
         public static string ToHexadecimal(byte[] bytes)
         {
             StringBuilder hexBuilder = new StringBuilder();
@@ -374,7 +457,7 @@ namespace FlyleafLib
             [DllImport("shlwapi.dll", CharSet = CharSet.Unicode)]
             public static extern int StrCmpLogicalW(string psz1, string psz2);
 
-            [DllImport ( "user32.dll" )]
+            [DllImport("user32.dll")]
             public static extern int SetWindowLong (IntPtr hWnd, int nIndex, uint dwNewLong);
 
             [DllImport("user32.dll",SetLastError = true)]
@@ -406,6 +489,15 @@ namespace FlyleafLib
 
             [DllImport("user32.dll")]
             public static extern bool GetWindowRect(IntPtr hwnd, ref RECT rectangle);
+
+            [DllImport("User32.dll", SetLastError = true)]
+            public static extern int SetWindowRgn(IntPtr hWnd, IntPtr hRgn, bool bRedraw);
+
+            [DllImport("User32.dll", SetLastError = true)]
+            public static extern int GetWindowRgn(IntPtr hWnd, IntPtr hRgn);
+
+            [DllImport("gdi32.dll")]
+            public static extern IntPtr CreateRectRgn(int nLeftRect, int nTopRect, int nRightRect, int nBottomRect);
 
             [StructLayout(LayoutKind.Sequential)]
             public struct WINDOWINFO

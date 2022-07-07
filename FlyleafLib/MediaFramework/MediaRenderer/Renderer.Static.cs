@@ -13,24 +13,11 @@ using Vortice.Direct3D11;
 namespace FlyleafLib.MediaFramework.MediaRenderer
 {
     public partial class Renderer
-    {
-        static bool IsWin8OrGreater;
-        
+    {   
         static InputElementDescription[] inputElements =
         {
             new InputElementDescription("POSITION", 0, Format.R32G32B32_Float,     0),
             new InputElementDescription("TEXCOORD", 0, Format.R32G32_Float,        0),
-        };
-
-        static float[] vertexBufferData =
-        {
-            -1.0f,  -1.0f,  0,      0.0f, 1.0f,
-            -1.0f,   1.0f,  0,      0.0f, 0.0f,
-             1.0f,  -1.0f,  0,      1.0f, 1.0f,
-                
-             1.0f,  -1.0f,  0,      1.0f, 1.0f,
-            -1.0f,   1.0f,  0,      0.0f, 0.0f,
-             1.0f,   1.0f,  0,      1.0f, 0.0f
         };
 
         static FeatureLevel[] featureLevels;
@@ -144,7 +131,7 @@ namespace FlyleafLib.MediaFramework.MediaRenderer
             }
         }
 
-        public static void CompileEmbeddedShaders()
+        public unsafe static void CompileEmbeddedShaders()
         {
             Assembly assembly = Assembly.GetExecutingAssembly();
             string[] shaders = assembly.GetManifestResourceNames().Where(x => Utils.GetUrlExtention(x) == "hlsl").ToArray();
@@ -174,10 +161,14 @@ namespace FlyleafLib.MediaFramework.MediaRenderer
                     Compiler.Compile(bytes, null, null, "main", null, $"{psOrvs}{profileExt}", 
                         ShaderFlags.OptimizationLevel3, out Blob shaderBlob, out Blob psError);
 
-                    #if DEBUG
-                    if (psError != null)
-                        Utils.Log($"Shader ({shaderName}) [Warnings/Errors]:\r\n{psError.ConvertToString()}");
-                    #endif
+                    if (psError != null && psError.BufferPointer != IntPtr.Zero)
+                    {
+                        string[] errors = Utils.BytePtrToStringUTF8((byte*)psError.BufferPointer).Split('\n');
+
+                        foreach (var line in errors)
+                            if (!string.IsNullOrWhiteSpace(line) && line.IndexOf("X3571") == -1)
+                                Engine.Log.Error($"[Renderer] [{shaderName}]: {line}");
+                    }
 
                     if (shaderBlob != null)
                         curShaders.Add(shaderName, shaderBlob);
@@ -186,11 +177,14 @@ namespace FlyleafLib.MediaFramework.MediaRenderer
         #if DEBUG
         public static void ReportLiveObjects()
         {
-            if (DXGI.DXGIGetDebugInterface1(out IDXGIDebug1 dxgiDebug).Success)
+            try
             {
-                dxgiDebug.ReportLiveObjects(DXGI.DebugAll, ReportLiveObjectFlags.Summary | ReportLiveObjectFlags.IgnoreInternal);
-                dxgiDebug.Dispose();
-            }
+                if (DXGI.DXGIGetDebugInterface1(out IDXGIDebug1 dxgiDebug).Success)
+                {
+                    dxgiDebug.ReportLiveObjects(DXGI.DebugAll, ReportLiveObjectFlags.Summary | ReportLiveObjectFlags.IgnoreInternal);
+                    dxgiDebug.Dispose();
+                }
+            } catch { }
         }
         #endif
         public static void Swap(Renderer renderer1, Renderer renderer2)

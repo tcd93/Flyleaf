@@ -296,22 +296,26 @@
                                 <RowDefinition Height="30"/>
                                 <RowDefinition Height="30"/>
                                 <RowDefinition Height="30"/>
+                                <RowDefinition Height="30"/>
                                 <RowDefinition Height="auto"/>
                             </Grid.RowDefinitions>
 
                             <TextBlock Text="Enabled" VerticalAlignment="Center"/>
                             <ToggleButton Grid.Column="1" Tag="_save" HorizontalAlignment="Left" IsChecked="{Binding Config.Subtitles.Enabled, UpdateSourceTrigger=Explicit}" Style="{StaticResource MaterialDesignSwitchDarkToggleButton}"/>
 
-                            <TextBlock Grid.Row="1" Text="Use Online DBs" VerticalAlignment="Center"/>
-                            <ToggleButton Grid.Row="1" Grid.Column="1" Tag="_save" HorizontalAlignment="Left" IsChecked="{Binding Config.Subtitles.UseOnlineDatabases, UpdateSourceTrigger=Explicit}" Style="{StaticResource MaterialDesignSwitchDarkToggleButton}"/>
+                            <TextBlock Grid.Row="1" Text="Search Local" VerticalAlignment="Center"/>
+                            <ToggleButton Grid.Row="1" Grid.Column="1" Tag="_save" HorizontalAlignment="Left" IsChecked="{Binding Config.Subtitles.SearchLocal, UpdateSourceTrigger=Explicit}" Style="{StaticResource MaterialDesignSwitchDarkToggleButton}"/>
 
-                            <TextBlock Grid.Row="2" Text="Delay (ms)" VerticalAlignment="Center"/>
-                            <TextBox Grid.Row="2" Grid.Column="1" HorizontalAlignment="Left" Style="{StaticResource FLTextboxN}" Text="{Binding Config.Subtitles.Delay, UpdateSourceTrigger=Explicit, Converter={StaticResource TicksToMilliSeconds}}"/>
+                            <TextBlock Grid.Row="2" Text="Search Online" VerticalAlignment="Center"/>
+                            <ToggleButton Grid.Row="2" Grid.Column="1" Tag="_save" HorizontalAlignment="Left" IsChecked="{Binding Config.Subtitles.SearchOnline, UpdateSourceTrigger=Explicit}" Style="{StaticResource MaterialDesignSwitchDarkToggleButton}"/>
 
-                            <TextBlock Grid.Row="3" Text="Fonts" VerticalAlignment="Center"/>
-                            <Button Margin=" 0 15 0 0" Grid.Row="3" Grid.Column="1" Height="auto" MaxHeight="100" Command="{Binding SetSubtitlesFont}">
+                            <TextBlock Grid.Row="3" Text="Delay (ms)" VerticalAlignment="Center"/>
+                            <TextBox Grid.Row="3" Grid.Column="1" HorizontalAlignment="Left" Style="{StaticResource FLTextboxN}" Text="{Binding Config.Subtitles.Delay, UpdateSourceTrigger=Explicit, Converter={StaticResource TicksToMilliSeconds}}"/>
+
+                            <TextBlock Grid.Row="4" Text="Fonts" VerticalAlignment="Center"/>
+                            <Button Margin=" 0 15 0 0" Grid.Row="4" Grid.Column="1" Height="auto" MaxHeight="100" Command="{Binding SetSubtitlesFont}">
                                 <StackPanel Orientation="Horizontal" Margin="0 5 0 5">
-                                    <Rectangle Margin=" 0 0 10 0" Width="18" Height="18" Fill="{Binding SubtitlesFontColor}"/>
+                                    <Rectangle Margin=" 0 0 10 0" Width="18" Height="18" Fill="{Binding UIConfig.SubsFontColor, Converter={StaticResource ColorToBrush}}"/>
                                     <TextBlock Text="{Binding SubtitlesFontDesc}" TextWrapping="Wrap" MaxWidth="200" VerticalAlignment="Center"/>
                                 </StackPanel>
                             </Button>
@@ -340,7 +344,7 @@
                                 </Grid.ColumnDefinitions>
                                 <Grid.RowDefinitions>
                                     <RowDefinition Height="30"/>
-                                    <RowDefinition Height="5"/>
+                                    <RowDefinition Height="auto"/>
                                     <RowDefinition Height="30"/>
                                     <RowDefinition Height="30"/>
                                     <RowDefinition Height="30"/>
@@ -440,7 +444,7 @@
 
                             <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
                                 <TextBlock Text="Theme" VerticalAlignment="Center"/>
-                                <ComboBox x:Name="cmbThemes" Margin="30 0 0 0" ItemsSource="{Binding UIThemes}" SelectedItem="{Binding SelectedTheme}" DisplayMemberPath="Name"/>
+                                <ComboBox x:Name="cmbThemes" Margin="30 0 0 0" ItemsSource="{Binding UIConfig.Themes}" SelectedItem="{Binding SelectedTheme}" DisplayMemberPath="Name"/>
                             </StackPanel>
 
                             <Separator Margin="0 20 0 20"/>

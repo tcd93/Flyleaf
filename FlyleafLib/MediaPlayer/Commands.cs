@@ -1,6 +1,8 @@
 ﻿using System.Windows.Input;
 
 using FlyleafLib.Controls.WPF;
+using FlyleafLib.MediaFramework.MediaPlaylist;
+using FlyleafLib.MediaFramework.MediaStream;
 
 namespace FlyleafLib.MediaPlayer
 {
@@ -24,6 +26,7 @@ namespace FlyleafLib.MediaPlayer
         public ICommand OpenFromClipboard       { get; set; }
         public ICommand OpenFromFileDialog      { get; set; }
         public ICommand OpenFromFolderDialog    { get; set; }
+        public ICommand Reopen                  { get; set; }
 
         public ICommand Play                    { get; set; }
         public ICommand Pause                   { get; set; }
@@ -60,7 +63,12 @@ namespace FlyleafLib.MediaPlayer
         public ICommand VolumeDown              { get; set; }
         public ICommand ToggleMute              { get; set; }
 
+        public ICommand ForceIdle               { get; set; }
+        public ICommand ForceActive             { get; set; }
         public ICommand ForceFullActive         { get; set; }
+        public ICommand RefreshActive           { get; set; }
+        public ICommand RefreshFullActive       { get; set; }
+
         public ICommand ResetFilter             { get; set; }
 
         Player player;
@@ -73,6 +81,7 @@ namespace FlyleafLib.MediaPlayer
             OpenFromClipboard       = new RelayCommandSimple(player.OpenFromClipboard);
             OpenFromFileDialog      = new RelayCommandSimple(player.OpenFromFileDialog);
             OpenFromFolderDialog    = new RelayCommandSimple(player.OpenFromFolderDialog);
+            Reopen                  = new RelayCommand(ReopenAction);
 
             Play = new RelayCommandSimple(player.Play);
             Pause                   = new RelayCommandSimple(player.Pause);
@@ -124,7 +133,12 @@ namespace FlyleafLib.MediaPlayer
             SubtitlesDelayRemove    = new RelayCommandSimple(player.Subtitles.DelayRemove);
             SubtitlesDelayRemove2   = new RelayCommandSimple(player.Subtitles.DelayRemove2);
 
+            ForceIdle               = new RelayCommandSimple(player.Activity.ForceIdle);
+            ForceActive             = new RelayCommandSimple(player.Activity.ForceActive);
             ForceFullActive         = new RelayCommandSimple(player.Activity.ForceFullActive);
+            RefreshActive           = new RelayCommandSimple(player.Activity.RefreshActive);
+            RefreshFullActive       = new RelayCommandSimple(player.Activity.RefreshFullActive);
+
             ResetFilter             = new RelayCommand(ResetFilterAction);
         }
 
@@ -178,12 +192,34 @@ namespace FlyleafLib.MediaPlayer
             if (input == null)
                 return;
 
-            if (input is MediaFramework.MediaStream.StreamBase)
-                player.OpenAsync((MediaFramework.MediaStream.StreamBase)input);
-            else if (input is MediaFramework.MediaInput.InputBase)
-                player.OpenAsync((MediaFramework.MediaInput.InputBase)input);
+            if (input is StreamBase)
+                player.OpenAsync((StreamBase)input);
+            else if (input is PlaylistItem)
+                player.OpenAsync((PlaylistItem)input);
+            else if (input is ExternalStream)
+                player.OpenAsync((ExternalStream)input);
+            else if (input is System.IO.Stream)
+                player.OpenAsync((System.IO.Stream)input);
             else
                 player.OpenAsync(input.ToString());
+        }
+
+        public void ReopenAction(object playlistItem)
+        {
+            if (playlistItem == null)
+                return;
+
+            PlaylistItem item = (PlaylistItem)playlistItem;
+            if (item.OpenedCounter > 0)
+            {
+                Session session = player.GetSession(item);
+                if (session.CurTime < 60 * (long)1000 * 10000)
+                    session.CurTime = 0;
+
+                player.OpenAsync(session);
+            }
+            else
+                player.OpenAsync(item);
         }
     }
 }

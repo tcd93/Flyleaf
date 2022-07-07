@@ -24,6 +24,7 @@ namespace FlyleafLib.Controls.WPF
         #region Properties
         public string       UIConfigPath        { get; set; }
         public string       ConfigPath          { get; set; }
+        public string       EnginePath          { get; set; }
 
         public Player       Player
         { 
@@ -40,18 +41,13 @@ namespace FlyleafLib.Controls.WPF
         Player _Player;
 
         public Config       Config              => Player?.Config;
+        public UIConfig     UIConfig            { get; set; }
 
         public AudioEngine  AudioEngine         => Engine.Audio;
         public EngineConfig ConfigEngine        => Engine.Config;
 
         public SerializableDictionary<string, SerializableDictionary<string, string>>
                             PluginsConfig       => Config?.Plugins;
-
-        public ObservableCollection<UITheme> 
-                            UIThemes            { get; set; } = new ObservableCollection<UITheme>();
-
-        public string       ErrorMsg            { get => _ErrorMsg; set => Set(ref _ErrorMsg, value); }
-        string _ErrorMsg;
 
         public bool         ShowDebug           { get => _ShowDebug; set { Set(ref _ShowDebug, value); Config.Player.Stats = value; } }
         bool _ShowDebug;
@@ -61,26 +57,7 @@ namespace FlyleafLib.Controls.WPF
 
         public string       SubtitlesFontDesc   { get => _SubtitlesFontDesc; set => Set(ref _SubtitlesFontDesc, value); }
         string _SubtitlesFontDesc;
-
-        public Brush        SubtitlesFontColor  { get => _SubtitlesFontColor; set => Set(ref _SubtitlesFontColor, value); }
-        Brush _SubtitlesFontColor;
-
-        public TextBlock    Subtitles           { get; set; }
         public int          UniqueId            { get; set; }
-
-        public string SelectedThemeStr
-        {
-            get => _SelectedTheme?.Name;
-            set
-            {
-                if (_SelectedThemeStr == value || value == null) return;
-                Set(ref _SelectedThemeStr, value);
-
-                foreach (var uitheme in UIThemes)
-                    if (uitheme.Name == value) SelectedTheme = uitheme;
-            }
-        }
-        string _SelectedThemeStr;
 
         public UITheme SelectedTheme
         {
@@ -90,7 +67,7 @@ namespace FlyleafLib.Controls.WPF
                 if (_SelectedTheme != null && _SelectedTheme.Name == value.Name)
                     return;
 
-                Set(ref _SelectedTheme, value);
+                Set(ref _SelectedTheme, value, false);
                 ITheme theme = Resources.GetTheme();
                 theme.SetPrimaryColor(value.PrimaryColor);
                 theme.SetSecondaryColor(value.SecondaryColor);
@@ -98,6 +75,7 @@ namespace FlyleafLib.Controls.WPF
                 Resources.SetTheme(theme);
                 settings?.Resources.SetTheme(theme);
 
+                UIConfig.SelectedTheme = value.Name;
                 if (Config != null && Config.Video != null)
                     Config.Video.BackgroundColor = value.VideoView;
             }
@@ -146,14 +124,11 @@ namespace FlyleafLib.Controls.WPF
                 .Select(prop =>
                     new KeyValuePair<String, Color>(prop.Name, (Color)prop.GetValue(null)));
         }
-        
         #endregion
 
         #region Initialize
         internal Settings
                     settings;
-        UITheme     defaultTheme;
-
         ContextMenu popUpMenu, popUpMenuSubtitles, popUpMenuVideo;
         MenuItem    popUpAspectRatio;
         MenuItem    popUpKeepAspectRatio;
@@ -165,7 +140,7 @@ namespace FlyleafLib.Controls.WPF
         Thickness   subsInitialMargin;
 
         bool        isDesignMode = (bool) DesignerProperties.IsInDesignModeProperty.GetMetadata(typeof(DependencyObject)).DefaultValue;
-        bool        prevActivityMode;
+        bool        initialActivityMode; // Note: we consider the user will not changed it
         bool        disposed;
 
         static Flyleaf()
@@ -175,16 +150,8 @@ namespace FlyleafLib.Controls.WPF
                 var flyleaf1 = (Flyleaf)e.Player1.Tag;
                 var flyleaf2 = (Flyleaf)e.Player2.Tag;
 
-                var saveMargin  = flyleaf1.Subtitles.Margin;
-                var saveFontSize= flyleaf1.Subtitles.FontSize;
                 var saveColor   = flyleaf1.Config.Video.BackgroundColor;
-
-                flyleaf1.Subtitles.Margin   = flyleaf2.Subtitles.Margin;
-                flyleaf1.Subtitles.FontSize = flyleaf2.Subtitles.FontSize;
                 flyleaf1.Config.Video.BackgroundColor = flyleaf2.Config.Video.BackgroundColor;
-
-                flyleaf2.Subtitles.Margin   = saveMargin;
-                flyleaf2.Subtitles.FontSize = saveFontSize;
                 flyleaf2.Config.Video.BackgroundColor = saveColor;
 
                 flyleaf1.Player = e.Player2;
@@ -197,9 +164,6 @@ namespace FlyleafLib.Controls.WPF
             if (isDesignMode) return;
 
             DataContext = this;
-
-            // Ensure that the engine has been started
-            Engine.Config.UIRefresh = true; // Allow UI Refresh for Activity Mode, Buffered Duration on Pause & Stats
         }
         public override void OnApplyTemplate()
         {
@@ -210,12 +174,14 @@ namespace FlyleafLib.Controls.WPF
         }
         private void Initialize()
         {
+            // Ensure that the engine has been started
+            Engine.Config.UIRefresh = true; // Allow UI Refresh for Activity Mode, Buffered Duration on Pause & Stats
+
             NamedColors = GetColors();
 
             popUpMenu           = ((FrameworkElement)Template.FindName("PART_ContextMenuOwner", this))?.ContextMenu;
             popUpMenuSubtitles  = ((FrameworkElement)Template.FindName("PART_ContextMenuOwner_Subtitles", this))?.ContextMenu;
             popUpMenuVideo      = ((FrameworkElement)Template.FindName("PART_ContextMenuOwner_Video", this))?.ContextMenu;
-            Subtitles           = (TextBlock) Template.FindName("PART_Subtitles", this);
 
             var dialogSettings = (DialogHost)Template.FindName("PART_DialogSettings", this);
             var dialogPlaylist = (DialogHost)Template.FindName("PART_PlaylistDialog", this);
@@ -230,21 +196,66 @@ namespace FlyleafLib.Controls.WPF
                 dialogPlaylist.Identifier = dialogPlaylistIdentifier;
             }
 
+            InitializePopUps();
+            RegisterCommands();
+
+            if (UIConfigPath != null)
+                try { UIConfig.Load(this, UIConfigPath); } catch { UIConfig = new UIConfig(this); }
+            else
+                UIConfig = new UIConfig(this);
+
+            if (!UIConfig.Loaded)
+            {
+                UIConfig.SubsMargin     = new Thickness(0, 0, 0, 50);
+                UIConfig.SubsFontFamily = "Segoe UI";
+                UIConfig.SubsFontWeight = FontWeights.Bold.ToString();
+                UIConfig.SubsFontStyle  = FontStyles.Normal.ToString();
+                UIConfig.SubsFontStretch= FontStretches.Normal.ToString();
+                UIConfig.SubsFontSize   = 33;
+                UIConfig.SubsFontColor  = Colors.White;
+
+                ITheme theme = Resources.GetTheme();
+                var defaultTheme = new UITheme(this, null) { Name = "Default", PrimaryColor = theme.PrimaryMid.Color, SecondaryColor = theme.SecondaryMid.Color, PaperColor = theme.Paper, VideoView = Config != null && Config.Video != null ? Config.Video.BackgroundColor : Colors.Black};
+                UIConfig.Themes = new ObservableCollection<UITheme>();
+                UIConfig.Themes.Add(new UITheme(this, defaultTheme) { Name= "Black & White",       PrimaryColor = Colors.White, SecondaryColor = Colors.White, PaperColor = Colors.Black, VideoView = Colors.Black });
+                UIConfig.Themes.Add(new UITheme(this, defaultTheme) { Name= "Blue & Red",          PrimaryColor = Colors.DodgerBlue, SecondaryColor = (Color)ColorConverter.ConvertFromString("#e00000"), PaperColor = Colors.Black, VideoView = Colors.Black });
+                UIConfig.Themes.Add(new UITheme(this, defaultTheme) { Name= "Orange",              PrimaryColor = (Color)ColorConverter.ConvertFromString("#ff8300"), SecondaryColor = Colors.White, PaperColor = Colors.Black, VideoView = Colors.Black });
+                UIConfig.Themes.Add(new UITheme(this, defaultTheme) { Name= "Firebrick",           PrimaryColor = Colors.Firebrick, SecondaryColor = Colors.White, PaperColor = Colors.Black, VideoView = Colors.Black });
+                UIConfig.Themes.Add(new UITheme(this, defaultTheme) { Name= "Fuchia,Lime & Blue",  PrimaryColor = (Color)ColorConverter.ConvertFromString("#e615e6"), SecondaryColor = Colors.Lime, PaperColor =(Color)ColorConverter.ConvertFromString("#0f1034"), VideoView = (Color)ColorConverter.ConvertFromString("#0f1034") });
+                UIConfig.Themes.Add(new UITheme(this, defaultTheme) { Name= "Gold & Chocolate",    PrimaryColor = (Color)ColorConverter.ConvertFromString("#ffc73b"), SecondaryColor = Colors.Chocolate, PaperColor = (Color)ColorConverter.ConvertFromString("#3b1212"), VideoView = (Color)ColorConverter.ConvertFromString("#3b1212") });
+                UIConfig.Themes.Add(new UITheme(this, defaultTheme) { Name= "Green & Brown",       PrimaryColor = (Color)ColorConverter.ConvertFromString("#24b03b"), SecondaryColor = (Color)ColorConverter.ConvertFromString("#e66102"), PaperColor = Colors.Black, VideoView = Colors.Black });
+                UIConfig.Themes.Add(new UITheme(this, defaultTheme) { Name= "Custom",              PrimaryColor = Colors.Orange, SecondaryColor = Colors.White, VideoView = Colors.Black });
+
+                UIConfig.SelectedTheme = "Firebrick";
+            }
+
+            foreach (var uitheme in UIConfig.Themes)
+                if (uitheme.Name == UIConfig.SelectedTheme)
+                    SelectedTheme = uitheme;
+
+            SubtitlesFontDesc = $"{UIConfig.SubsFontFamily} ({UIConfig.SubsFontWeight}), {UIConfig.SubsFontSize}";
+            subsInitialMargin   = UIConfig.SubsMargin;
+
+            Raise(null);
+            settings?.Raise(null);
+        }
+        private void InitializePopUps()
+        {
             if (popUpMenu != null)
                 popUpMenu.PlacementTarget = this;
 
             if (popUpMenuSubtitles != null)
             {
                 popUpMenuSubtitles.PlacementTarget = this;
-                popUpMenuSubtitles.Opened += (o, e) => { prevActivityMode = Config.Player.ActivityMode; Config.Player.ActivityMode = false; };
-                popUpMenuSubtitles.Closed += (o, e) => { Config.Player.ActivityMode = prevActivityMode == true; };
+                popUpMenuSubtitles.Opened += (o, e) => { if (initialActivityMode) Config.Player.ActivityMode = false; };
+                popUpMenuSubtitles.Closed += (o, e) => { if (initialActivityMode) Config.Player.ActivityMode = true; };
             }
 
             if (popUpMenuVideo != null)
             {
                 popUpMenuVideo.PlacementTarget = this;
-                popUpMenuVideo.Opened += (o, e) => { prevActivityMode = Config.Player.ActivityMode; Config.Player.ActivityMode = false; };
-                popUpMenuVideo.Closed += (o, e) => { Config.Player.ActivityMode = prevActivityMode == true; };
+                popUpMenuVideo.Opened += (o, e) => { if (initialActivityMode) Config.Player.ActivityMode = false; };
+                popUpMenuVideo.Closed += (o, e) => { if (initialActivityMode) Config.Player.ActivityMode = true; };
             }
 
             if (popUpMenu != null)
@@ -270,29 +281,11 @@ namespace FlyleafLib.Controls.WPF
                 popUpAspectRatio.Items.Add(popUpCustomAspectRatio);
                 popUpAspectRatio.Items.Add(popUpCustomAspectRatioSet);
 
-                popUpMenu.Closed += (o, e) =>
-                {
-                    if (!prevActivityMode)
-                        return;
-
-                    // Workaround to re-enable activity mode
-                    if (!Player.IsOpenFileDialogOpen)
-                        Config.Player.ActivityMode = true;
-                    else
-                    {
-                        System.Threading.Tasks.Task.Run(() =>
-                        {
-                            while (Player.IsOpenFileDialogOpen)
-                                Thread.Sleep(50);
-
-                            Config.Player.ActivityMode = true;
-                        });
-                    }
-                };
+                popUpMenu.Closed += (o, e) => { if (initialActivityMode && !Player.IsOpenFileDialogOpen) Config.Player.ActivityMode = true; };
 
                 popUpMenu.Opened += (o, e) =>
                 {
-                    prevActivityMode = Config.Player.ActivityMode; Config.Player.ActivityMode = false;
+                    if (initialActivityMode) Config.Player.ActivityMode = false;
                     CanPaste = String.IsNullOrEmpty(Clipboard.GetText()) ? false : true;
                     popUpCustomAspectRatio.Header = $"Custom ({Config.Video.CustomAspectRatio})";
                     FixMenuSingleCheck(popUpAspectRatio, Config.Video.AspectRatio.ToString());
@@ -308,49 +301,16 @@ namespace FlyleafLib.Controls.WPF
                         DialogHost.Close(dialogSettingsIdentifier, "cancel");
                 };
             }
-
-            RegisterCommands();
-
-            if (Subtitles != null)
-            {
-                subsInitialMargin   = Subtitles.Margin;
-                SubtitlesFontDesc   = $"{Subtitles.FontFamily} ({Subtitles.FontWeight}), {Subtitles.FontSize}";
-                SubtitlesFontColor  = Subtitles.Foreground;
-            }
-
-            ITheme theme = Resources.GetTheme();
-            defaultTheme = new UITheme(this, defaultTheme) { Name = "Default", PrimaryColor = theme.PrimaryMid.Color, SecondaryColor = theme.SecondaryMid.Color, PaperColor = theme.Paper, VideoView = Config != null && Config.Video != null ? Config.Video.BackgroundColor : Colors.Black};
-
-            if (UIConfigPath != null)
-                UIConfig.Load(this, UIConfigPath);
-
-            if (UIThemes == null || UIThemes.Count == 0)
-            {
-                UIThemes.Add(new UITheme(this, defaultTheme) { Name= "Black & White",       PrimaryColor = Colors.White, SecondaryColor = Colors.White, PaperColor = Colors.Black, VideoView = Colors.Black });
-                UIThemes.Add(new UITheme(this, defaultTheme) { Name= "Blue & Red",          PrimaryColor = Colors.DodgerBlue, SecondaryColor = (Color)ColorConverter.ConvertFromString("#e00000"), PaperColor = Colors.Black, VideoView = Colors.Black });
-                UIThemes.Add(new UITheme(this, defaultTheme) { Name= "Orange",              PrimaryColor = (Color)ColorConverter.ConvertFromString("#ff8300"), SecondaryColor = Colors.White, PaperColor = Colors.Black, VideoView = Colors.Black });
-                UIThemes.Add(new UITheme(this, defaultTheme) { Name= "Firebrick",           PrimaryColor = Colors.Firebrick, SecondaryColor = Colors.White, PaperColor = Colors.Black, VideoView = Colors.Black });
-                UIThemes.Add(new UITheme(this, defaultTheme) { Name= "Fuchia,Lime & Blue",  PrimaryColor = (Color)ColorConverter.ConvertFromString("#e615e6"), SecondaryColor = Colors.Lime, PaperColor =(Color)ColorConverter.ConvertFromString("#0f1034"), VideoView = (Color)ColorConverter.ConvertFromString("#0f1034") });
-                UIThemes.Add(new UITheme(this, defaultTheme) { Name= "Gold & Chocolate",    PrimaryColor = (Color)ColorConverter.ConvertFromString("#ffc73b"), SecondaryColor = Colors.Chocolate, PaperColor = (Color)ColorConverter.ConvertFromString("#3b1212"), VideoView = (Color)ColorConverter.ConvertFromString("#3b1212") });
-                UIThemes.Add(new UITheme(this, defaultTheme) { Name= "Green & Brown",       PrimaryColor = (Color)ColorConverter.ConvertFromString("#24b03b"), SecondaryColor = (Color)ColorConverter.ConvertFromString("#e66102"), PaperColor = Colors.Black, VideoView = Colors.Black });
-                UIThemes.Add(new UITheme(this, defaultTheme) { Name= "Custom",              PrimaryColor = Colors.Orange, SecondaryColor = Colors.White, VideoView = Colors.Black });
-            }
-
-            if (string.IsNullOrEmpty(SelectedThemeStr))
-                SelectedTheme = UIThemes[3];
-            
-            Raise(null);
-            settings?.Raise(null);
         }
 
         private void InitializePlayer(Player oldPlayer = null)
         {
             // Updates the key binding actions with the new instances in case of swap or initial load
             bool SubsYUp = false, SubsYDown = false, SubsFontIncrease = false, SubsFontDecrease = false;
-            Action aSubsYUp =           () => { Thickness t = Subtitles.Margin; t.Bottom += 2; Subtitles.Margin = t; Raise(nameof(Subtitles)); };
-            Action aSubsYDown =         () => { Thickness t = Subtitles.Margin; t.Bottom -= 2; Subtitles.Margin = t; Raise(nameof(Subtitles)); };
-            Action aSubsFontIncrease =  () => { Subtitles.FontSize += 2; };
-            Action aSubsFontDecrease =  () => { Subtitles.FontSize -= 2; };
+            Action aSubsYUp =           () => { Thickness t = UIConfig.SubsMargin; t.Bottom += 2; UIConfig.SubsMargin = t; };
+            Action aSubsYDown =         () => { Thickness t = UIConfig.SubsMargin; t.Bottom -= 2; UIConfig.SubsMargin = t; };
+            Action aSubsFontIncrease =  () => { UIConfig.SubsFontSize += 2; };
+            Action aSubsFontDecrease =  () => { UIConfig.SubsFontSize -= 2; };
 
             Config.Player.ActivityMode = true; // To allow Idle mode on flyleafBar
             Config.Player.KeyBindings.FlyleafWindow = true; // To allow keybindings also on front window
@@ -388,24 +348,23 @@ namespace FlyleafLib.Controls.WPF
                 }
             }
 
+            initialActivityMode = Config.Player.ActivityMode;
+
             Player.Tag = this;
 
             if (oldPlayer != null)
-            {
-                //Log($"Assigning {Player.PlayerId} | {(oldPlayer != null ? $"Old {oldPlayer.PlayerId}" : "")}"); 
                 return;
-            }
 
             UniqueId = Player.PlayerId;
-            //Log($"Assigning {Player.PlayerId} | {(oldPlayer != null ? $"Old {oldPlayer.PlayerId}" : "")}"); 
 
             Unloaded += (o, e) => { Dispose(); };
             Player.Control.MouseClick   += (o, e) => { if (e.Button == System.Windows.Forms.MouseButtons.Right & popUpMenu != null) popUpMenu.IsOpen = true; };
-            MouseDown += (o, e) => { Player?.Activity.ForceFullActive(); };
-            MouseMove += (o, e) => { Player?.Activity.ForceFullActive(); };
-
-            if (defaultTheme != null)
-                defaultTheme.VideoView = Config.Video.BackgroundColor;
+            MouseDown += (o, e) => { Player?.Activity.RefreshFullActive(); };
+            MouseMove += (o, e) => {
+                // Weird bug when slider's value changes will cause mouse move event to fire (so we can not go idle while mouse over the sliders)
+                if (!(e.OriginalSource is System.Windows.Shapes.Rectangle))
+                    Player?.Activity.RefreshFullActive(); 
+            };
 
             if (SelectedTheme != null)
                 Config.Video.BackgroundColor = SelectedTheme.VideoView;
@@ -472,6 +431,7 @@ namespace FlyleafLib.Controls.WPF
         #region ICommands
         void RegisterCommands()
         {
+            OpenFileDialog      = new RelayCommand(OpenFileDialogAction);
             OpenSettings        = new RelayCommand(OpenSettingsAction);
             OpenPlaylistDialog  = new RelayCommand(OpenPlaylistDialogAction);
             OpenColorPicker     = new RelayCommand(OpenColorPickerAction);
@@ -482,6 +442,14 @@ namespace FlyleafLib.Controls.WPF
             ResetSubsPositionY  = new RelayCommand(ResetSubsPositionYAction);
             ShowSubtitlesMenu   = new RelayCommand(ShowSubtitlesMenuAction);
             ShowVideoMenu       = new RelayCommand(ShowVideoMenuAction);
+        }
+
+        public ICommand OpenFileDialog { get; set; }
+        public void OpenFileDialogAction(object obj = null)
+        {
+            // From Pop-Up menu we disable ActivityMode but it needs to be enable so it can be re-enabled when the File Dialog is closed
+            Config.Player.ActivityMode = initialActivityMode;
+            Player.OpenFromFileDialog();
         }
 
         public ICommand ExitApplication { get ; set; }
@@ -506,7 +474,7 @@ namespace FlyleafLib.Controls.WPF
             if (settings == null)
                 settings = new Settings(this);
 
-            Config.Player.ActivityMode = false;
+            if (initialActivityMode) Config.Player.ActivityMode = false;
             Config.Player.KeyBindings.Enabled = false;
 
             Dictionary<VideoFilters, int> saveFilterValues = new Dictionary<VideoFilters, int>();
@@ -516,7 +484,7 @@ namespace FlyleafLib.Controls.WPF
             var prevConfig = Config.Video.Clone();
             var result = await DialogHost.Show(settings, dialogSettingsIdentifier);
 
-            Config.Player.ActivityMode = true;
+            if (initialActivityMode) Config.Player.ActivityMode = true;
             Config.Player.KeyBindings.Enabled = true;
 
             if (result == null) return;
@@ -533,7 +501,12 @@ namespace FlyleafLib.Controls.WPF
             {
                 settings.ApplySettings();
                 if (result.ToString() == "save")
-                    UIConfig.Save(this, UIConfigPath, ConfigPath);
+                {
+                    subsInitialMargin = UIConfig.SubsMargin;
+
+                    try { UIConfig.Save(this, UIConfigPath, ConfigPath, EnginePath);
+                    } catch (Exception e) { MessageBox.Show(e.Message, "Error"); }
+                }
             }
         }
         public ICommand OpenPlaylistDialog { get; set; }
@@ -605,28 +578,30 @@ namespace FlyleafLib.Controls.WPF
         }
 
         public ICommand ResetSubsPositionY { get; set; }
-        public void ResetSubsPositionYAction(object obj = null) { Subtitles.Margin = subsInitialMargin; }
+        public void ResetSubsPositionYAction(object obj = null) { UIConfig.SubsMargin = subsInitialMargin; }
 
         public ICommand SetSubsPositionY { get; set; }
-        public void SetSubsPositionYAction(object y) { Thickness t = Subtitles.Margin; t.Bottom += int.Parse(y.ToString()); Subtitles.Margin = t; Raise(nameof(Subtitles)); }
+        public void SetSubsPositionYAction(object y) { Thickness t = UIConfig.SubsMargin; t.Bottom += int.Parse(y.ToString()); UIConfig.SubsMargin = t; }
 
         public ICommand SetSubtitlesFont    { get; set; }
+        public static FontWeightConverter fontWeightConv = new FontWeightConverter();
+        public static FontStyleConverter fontStyleConv = new FontStyleConverter();
+        public static FontStretchConverter fontStretchConv = new FontStretchConverter();
         public void SetSubtitlesFontAction(object obj = null)
         {
             ColorFontDialog dialog  = new ColorFontDialog();
-            dialog.Font = new FontInfo(Subtitles.FontFamily, Subtitles.FontSize, Subtitles.FontStyle, Subtitles.FontStretch, Subtitles.FontWeight, (SolidColorBrush) Subtitles.Foreground);
+            dialog.Font = new FontInfo(new FontFamily(UIConfig.SubsFontFamily), UIConfig.SubsFontSize, (FontStyle) fontStyleConv.ConvertFromString(UIConfig.SubsFontStyle), (FontStretch) fontStretchConv.ConvertFromString(UIConfig.SubsFontStretch), (FontWeight) fontWeightConv.ConvertFromString(UIConfig.SubsFontWeight), new SolidColorBrush(UIConfig.SubsFontColor));
 
             if (dialog.ShowDialog() == true && dialog.Font != null)
             {
-                Subtitles.FontFamily    = dialog.Font.Family;
-                Subtitles.FontSize      = dialog.Font.Size;
-                Subtitles.FontWeight    = dialog.Font.Weight;
-                Subtitles.FontStretch   = dialog.Font.Stretch;
-                Subtitles.FontStyle     = dialog.Font.Style;
-                Subtitles.Foreground    = dialog.Font.BrushColor;
+                UIConfig.SubsFontFamily = dialog.Font.Family.ToString();
+                UIConfig.SubsFontSize   = dialog.Font.Size;
+                UIConfig.SubsFontWeight = dialog.Font.Weight.ToString();
+                UIConfig.SubsFontStretch= dialog.Font.Stretch.ToString();
+                UIConfig.SubsFontStyle  = dialog.Font.Style.ToString();
+                UIConfig.SubsFontColor  = dialog.Font.BrushColor.Color;
 
-                SubtitlesFontDesc       = $"{Subtitles.FontFamily} ({Subtitles.FontWeight}), {Subtitles.FontSize}";
-                SubtitlesFontColor      = Subtitles.Foreground;
+                SubtitlesFontDesc       = $"{UIConfig.SubsFontFamily} ({UIConfig.SubsFontWeight}), {UIConfig.SubsFontSize}";
             }
         }
         #endregion

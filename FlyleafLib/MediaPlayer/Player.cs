@@ -5,10 +5,12 @@ using System.Threading;
 
 using FlyleafLib.Controls;
 using FlyleafLib.Controls.WPF;
+
 using FlyleafLib.MediaFramework.MediaContext;
 using FlyleafLib.MediaFramework.MediaDecoder;
 using FlyleafLib.MediaFramework.MediaFrame;
 using FlyleafLib.MediaFramework.MediaRenderer;
+using FlyleafLib.MediaFramework.MediaPlaylist;
 using FlyleafLib.MediaFramework.MediaDemuxer;
 
 using static FlyleafLib.Utils;
@@ -23,9 +25,9 @@ namespace FlyleafLib.MediaPlayer
 
         /// <summary>
         /// Flyleaf Control (WinForms)
-        /// (Normally you should not access this directly)
+        /// (WPF: Normally you should not access this directly <see cref="SwapPlayers(Player, Player)"/>)
         /// </summary>
-        public Flyleaf              Control             { get => _Control; set { InitializeControl1(_Control, value); } }
+        public Flyleaf              Control             { get => _Control; set { SetControl(_Control, value); } }
         internal Flyleaf _Control;
 
         /// <summary>
@@ -43,6 +45,8 @@ namespace FlyleafLib.MediaPlayer
         /// Helper ICommands for WPF MVVM
         /// </summary>
         public Commands             Commands            { get; private set; }
+
+        public Playlist             Playlist            => decoder.Playlist;
 
         /// <summary>
         /// Player's current video playlist
@@ -68,7 +72,7 @@ namespace FlyleafLib.MediaPlayer
         /// Player's Renderer
         /// (Normally you should not access this directly)
         /// </summary>
-        public Renderer             renderer            => decoder?.VideoDecoder?.Renderer;
+        public Renderer             renderer            => decoder.VideoDecoder.Renderer;
 
         /// <summary>
         /// Player's Decoder Context
@@ -98,7 +102,7 @@ namespace FlyleafLib.MediaPlayer
         /// Main Demuxer (if video disabled or audio only can be AudioDemuxer instead of VideoDemuxer)
         /// (Normally you should not access this directly)
         /// </summary>
-        public Demuxer              MainDemuxer         { get; private set; }
+        public Demuxer              MainDemuxer         => decoder.MainDemuxer;
 
         /// <summary>
         /// Audio Demuxer
@@ -163,9 +167,7 @@ namespace FlyleafLib.MediaPlayer
         {
             if (MainDemuxer == null || seeks.Count != 0) return;
 
-            MainDemuxer.UpdateCurTime();
-
-            if (MainDemuxer.HLSPlaylist != null)
+            if (MainDemuxer.IsHLSLive)
             {
                 curTime  = MainDemuxer.CurTime;
                 duration = MainDemuxer.Duration;
@@ -199,7 +201,6 @@ namespace FlyleafLib.MediaPlayer
                 if (MainDemuxer == null)
                     return 0;
                 
-                MainDemuxer.UpdateCurTime();
                 return MainDemuxer.BufferedDuration;
             } 
                                                                             internal set => Set(ref _BufferedDuration, value); }
@@ -211,20 +212,11 @@ namespace FlyleafLib.MediaPlayer
         public bool         IsLive              { get => isLive;            private set => Set(ref _IsLive, value); }
         bool _IsLive, isLive;
 
-        public bool         IsPlaylist          { get => isPlaylist;        private set => Set(ref _IsPlaylist, value); }
-        bool _IsPlaylist, isPlaylist;
-
         ///// <summary>
         ///// Total bitrate (Kbps)
         ///// </summary>
         public double       BitRate             { get => bitRate;           internal set => Set(ref _BitRate, value); }
         internal double _BitRate, bitRate;
-
-        /// <summary>
-        /// Input's title
-        /// </summary>
-        public string       Title               { get => title;             private set => Set(ref _Title, value); }
-        string _Title, title;
 
         /// <summary>
         /// Whether the player is recording
@@ -258,8 +250,6 @@ namespace FlyleafLib.MediaPlayer
                     newValue = 0.25;
                 else if (value > 16)
                     newValue = 16;
-                else if (value > 1)
-                    newValue = (int) value;
 
                 if (newValue == _Speed || newValue > 1 && ReversePlayback)
                     return;
@@ -269,9 +259,10 @@ namespace FlyleafLib.MediaPlayer
 
                 if (newValue > 1)
                 {
-                    VideoDecoder.Speed      = (int)newValue;
-                    AudioDecoder.Speed      = (int)newValue;
-                    SubtitlesDecoder.Speed  = (int)newValue;
+                    int skipFramesOffset = newValue % 1 == 0 ? 0 : 1;
+                    VideoDecoder.Speed      = (int)newValue + skipFramesOffset;
+                    AudioDecoder.Speed      = (int)newValue + skipFramesOffset;
+                    SubtitlesDecoder.Speed  = (int)newValue + skipFramesOffset;
                 }
                 else
                 {
@@ -327,7 +318,7 @@ namespace FlyleafLib.MediaPlayer
                 if (!Video.IsOpened || !CanPlay | IsLive)
                     return;
 
-                lock (lockPlayPause)
+                lock (lockActions)
                 {
                     bool shouldPlay = IsPlaying;
                     Pause();
@@ -362,30 +353,19 @@ namespace FlyleafLib.MediaPlayer
         public object       Tag                 { get; set; }
         public string       LastError           { get => lastError; set => Set(ref _LastError, value); } 
         string _LastError, lastError;
-
-        // TBR: No UI updates and some of them maybe should not be exposed
-
-        /// <summary>
-        /// Whether playback has been completed
-        /// </summary>
-        public bool         HasEnded            => decoder != null && (VideoDecoder.Status == MediaFramework.Status.Ended || (VideoDecoder.Disposed && AudioDecoder.Status == MediaFramework.Status.Ended));
-        public bool         IsSeeking           { get; private set; }
-        public bool         IsSwaping           { get; private set; }
-        public bool         IsOpening           { get; private set; }
-        public bool         IsOpeningInput      { get; private set; }
+        bool decoderHasEnded => decoder != null && (VideoDecoder.Status == MediaFramework.Status.Ended || (VideoDecoder.Disposed && AudioDecoder.Status == MediaFramework.Status.Ended));
         #endregion
 
         #region Properties Internal
-        Thread tSeek, tPlay;
-        object lockOpen         = new object();
-        object lockSeek         = new object();
-        object lockPlayPause    = new object();
-        object lockSubtitles    = new object();
+        object lockActions  = new object();
+        object lockSubtitles= new object();
 
-        ConcurrentStack<SeekData>       seeks       = new ConcurrentStack<SeekData>();
-        ConcurrentStack<OpenData>       opens       = new ConcurrentStack<OpenData>();
-        ConcurrentStack<OpenInputData>  inputopens  = new ConcurrentStack<OpenInputData>();
-        internal ConcurrentQueue<Action> UIActions  = new ConcurrentQueue<Action>();
+        bool taskSeekRuns;
+        bool taskPlayRuns;
+        bool taskOpenAsyncRuns;
+
+        ConcurrentStack<SeekData>   seeks       = new ConcurrentStack<SeekData>();
+        ConcurrentQueue<Action>     UIActions  = new ConcurrentQueue<Action>();
 
         internal AudioFrame     aFrame;
         internal VideoFrame     vFrame;
@@ -418,7 +398,8 @@ namespace FlyleafLib.MediaPlayer
                 Config = new Config();
 
             PlayerId = GetUniqueId();
-            Log = new LogHandler($"[#{PlayerId}] [Player        ] ");
+            Log = new LogHandler(("[#" + PlayerId + "]").PadRight(8, ' ') + " [Player        ] ");
+            Log.Debug($"Creating Player (Usage = {Config.Player.Usage})");
 
             Activity    = new Activity(this);
             Audio       = new Audio(this);
@@ -428,91 +409,56 @@ namespace FlyleafLib.MediaPlayer
             Playlist    = new Playlist(this);
 
             Config.SetPlayer(this);
-
+            
             if (Config.Player.Usage == Usage.Audio)
             {
                 Config.Video.Enabled = false;
                 Config.Subtitles.Enabled = false;
-                Log.Debug($"Creating (Usage = {Config.Player.Usage}) ... (initializing the decoder)");
-                InitializeDecoder();
-            }
-            else
-                Log.Debug($"Creating (Usage = {Config.Player.Usage}) ... (1/3 waiting for control to set)");
-        }
-        private void InitializeControl1(Flyleaf oldValue, Flyleaf newValue)
-        {
-            lock (this)
-            {
-                if (newValue == null) return;
-
-                if (oldValue != null && newValue != null)
-                {
-                    if (oldValue.Handle == newValue.Handle) return;
-
-                    _Control = newValue;
-                }
-                else
-                {
-                    Log.Debug($"Creating (Usage = {Config.Player.Usage}) ... (2/3 waiting for handle to be created)");
-
-                    if (newValue.Handle != IntPtr.Zero)
-                        InitializeControl2(newValue);
-                    else
-                        newValue.HandleCreated += (o, e) => { InitializeControl2(newValue); };
-                }
-            }   
-        }
-        private void InitializeControl2(Flyleaf newValue)
-        {
-            lock (this)
-            {
-                _Control = newValue;
-                _Control.Player = this;
-                
-                SubscribeEvents();
-                Log.Debug($"Creating (Usage = {Config.Player.Usage}) ... (3/3 initializing the decoder)");
-                InitializeDecoder();
-            }
-        }
-        private void InitializeDecoder()
-        {
-            if (Engine.GetPlayerPos(PlayerId) != -1)
-            {
-                if (Control == null || decoder == null || Config.Player.Usage != Usage.Audio)
-                    throw new Exception("PlayerId already exists");
-                else
-                {
-                    VideoDecoder.Dispose();
-                    decoder.VideoDecoder = new VideoDecoder(decoder.Config, Control, decoder.UniqueId);
-                    VideoDecoder.CodecChanged = Decoder_VideoCodecChanged;
-
-                    Log.Info("Created");
-                    return;
-                }
             }
 
             Engine.AddPlayer(this);
-            decoder = new DecoderContext(Config, Control, PlayerId);
+            decoder = new DecoderContext(Config, PlayerId);
 
-            decoder.VideoInputOpened        += Decoder_VideoInputOpened;
-            decoder.AudioInputOpened        += Decoder_AudioInputOpened;
-            decoder.SubtitlesInputOpened    += Decoder_SubtitlesInputOpened;
-            decoder.VideoStreamOpened       += Decoder_VideoStreamOpened;
-            decoder.AudioStreamOpened       += Decoder_AudioStreamOpened;
-            decoder.SubtitlesStreamOpened   += Decoder_SubtitlesStreamOpened;
+            //decoder.OpenPlaylistItemCompleted              += Decoder_OnOpenExternalSubtitlesStreamCompleted;
+            
+            decoder.OpenAudioStreamCompleted               += Decoder_OpenAudioStreamCompleted;
+            decoder.OpenVideoStreamCompleted               += Decoder_OpenVideoStreamCompleted;
+            decoder.OpenSubtitlesStreamCompleted           += Decoder_OpenSubtitlesStreamCompleted;
 
-            AudioDecoder.CodecChanged        = Decoder_AudioCodecChanged;
-            VideoDecoder.CodecChanged        = Decoder_VideoCodecChanged;
+            decoder.OpenExternalAudioStreamCompleted       += Decoder_OpenExternalAudioStreamCompleted;
+            decoder.OpenExternalVideoStreamCompleted       += Decoder_OpenExternalVideoStreamCompleted;
+            decoder.OpenExternalSubtitlesStreamCompleted   += Decoder_OpenExternalSubtitlesStreamCompleted;
+
+            AudioDecoder.CodecChanged = Decoder_AudioCodecChanged;
+            VideoDecoder.CodecChanged = Decoder_VideoCodecChanged;
             decoder.RecordingCompleted += (o, e) => { IsRecording = false; };
 
-            MainDemuxer = VideoDemuxer;
+            status = Status.Stopped;
             Reset();
-
-            if (Config.Player.Usage != Usage.Audio)
-                renderer.Present();
-
-            Log.Info("Created");
+            Log.Debug("Created");
         }
+        private void SetControl(Flyleaf oldValue, Flyleaf newValue)
+        {
+            lock (this)
+            {
+                if (newValue == null)
+                    return;
+
+                if (oldValue != null)
+                {
+                    if (oldValue.Handle == newValue.Handle)
+                        return;
+
+                    throw new Exception("Cannot change Player's control");
+                }
+
+                _Control = newValue;
+                _Control.Player = this;
+                SubscribeEvents();
+                VideoDecoder.CreateRenderer(_Control);
+            }   
+        }
+
         public void SubscribeEvents()
         {
             UnsubscribeEvents();
@@ -522,7 +468,7 @@ namespace FlyleafLib.MediaPlayer
             {
                 if (VideoView != null)
                 {
-                    if (Config.Player.KeyBindings.FlyleafWindow)
+                    if (Config.Player.KeyBindings.FlyleafWindow && VideoView.WindowFront != null)
                     {
                         VideoView.WindowFront.KeyUp     += WindowFront_KeyUp;
                         VideoView.WindowFront.KeyDown   += WindowFront_KeyDown;
@@ -541,7 +487,7 @@ namespace FlyleafLib.MediaPlayer
             {
                 if (VideoView != null)
                 {
-                    if (Config.Player.KeyBindings.FlyleafWindow)
+                    if (Config.Player.KeyBindings.FlyleafWindow && VideoView.WindowFront != null)
                         VideoView.WindowFront.KeyUp += WindowFront_KeyUp;
 
                     VideoView.WinFormsHost.KeyUp    += WinFormsHost_KeyUp;
@@ -576,8 +522,6 @@ namespace FlyleafLib.MediaPlayer
 
             if (Config.Player.MouseBindings.PanZoomOnWheelAndCtrl)
                 _Control.MouseWheel += Control_MouseWheel;
-            
-            Activity.ForceFullActive();
         }
         public void UnsubscribeEvents()
         {
@@ -585,9 +529,13 @@ namespace FlyleafLib.MediaPlayer
 
             if (VideoView != null)
             {
-                VideoView.WindowFront.KeyDown   -= WindowFront_KeyDown;
+                if (VideoView.WindowFront != null)
+                {
+                    VideoView.WindowFront.KeyDown   -= WindowFront_KeyDown;
+                    VideoView.WindowFront.KeyUp     -= WindowFront_KeyUp;
+                }
+                
                 VideoView.WinFormsHost.KeyDown  -= WinFormsHost_KeyDown;
-                VideoView.WindowFront.KeyUp     -= WindowFront_KeyUp;
                 VideoView.WinFormsHost.KeyUp    -= WinFormsHost_KeyUp;
             }
             
@@ -612,30 +560,19 @@ namespace FlyleafLib.MediaPlayer
         public void Dispose() { Engine.DisposePlayer(this); }
         internal void DisposeInternal()
         {
-            lock (this)
+            lock (lockActions)
             {
                 if (IsDisposed) return;
+                IsDisposed = true;
 
                 try
                 {
-                    DisableNotifications = true;
                     Stop();
-
                     Audio.Dispose(); 
                     decoder.Dispose();
 
-                    decoder = null;
-                    Config = null;
-
-                    IsDisposed = true;
-
-                    if (VideoView != null && VideoView.WindowFront != null && !VideoView.WindowFront.Disposing)
-                    {
-                        if (VideoView.WindowFront.Disposed) return;
-
-                        System.Windows.Application.Current.Dispatcher.BeginInvoke(new Action(() => { VideoView?.WindowFront?.Close(); GC.Collect(GC.MaxGeneration, GCCollectionMode.Forced); } ));
-                        return;
-                    }
+                    if (VideoView != null)
+                        UI(new Action(() => { VideoView?.Dispose(); GC.Collect(GC.MaxGeneration, GCCollectionMode.Forced); } ));
                     else
                         GC.Collect(GC.MaxGeneration, GCCollectionMode.Forced);
 
@@ -646,28 +583,23 @@ namespace FlyleafLib.MediaPlayer
 
         private void ResetMe()
         {
-            if (renderer != null)
-            {
-                // TBR: Probably we just need to clear the screen with config's backcolor sometimes but render can be disposed
-                renderer.DisableRendering = true;
-                renderer.Present();
-            }
-
+            canPlay     = false;
             bitRate     = 0;
             curTime     = 0;
             duration    = 0;
             isLive      = false;
-            isPlaylist  = false;
-            title       = "";
+            lastError   = null;
 
             UIAdd(() =>
             {
                 BitRate     = BitRate;
                 Duration    = Duration;
                 IsLive      = IsLive;
-                IsPlaylist  = IsPlaylist;
-                Title       = Title;
-                UpdateCurTime();
+                Status      = Status;
+                CanPlay     = CanPlay;
+                LastError   = LastError;
+                BufferedDuration = 0;
+                Set(ref _CurTime, curTime, true, nameof(CurTime));
             });
         }
         private void Reset()
@@ -678,7 +610,7 @@ namespace FlyleafLib.MediaPlayer
             Subtitles.Reset();
             UIAll();
         }
-        private void Initialize()
+        private void Initialize(Status status = Status.Stopped, bool andDecoder = true)
         {
             try
             {
@@ -686,20 +618,19 @@ namespace FlyleafLib.MediaPlayer
 
                 TimeBeginPeriod(1);
 
-                status = Status.Stopped;
+                this.status = status;
                 canPlay = false;
-                ReversePlayback = false;
                 isVideoSwitch = false;
                 seeks.Clear();
-                EnsureThreadDone(tSeek);
-                EnsureThreadDone(tPlay);
-                decoder.Initialize(); // Null exception if control's handle is not created yet
-                UIAdd(() =>
-                {
-                    Status  = Status;
-                    CanPlay = CanPlay;
-                });
+                
+                while (taskPlayRuns || taskSeekRuns) Thread.Sleep(5);
+
+                if (andDecoder)
+                    decoder.Initialize();
+
                 Reset();
+                VideoDemuxer.DisableReversePlayback();
+                ReversePlayback = false;
 
                 if (CanDebug) Log.Debug($"Initialized");
 

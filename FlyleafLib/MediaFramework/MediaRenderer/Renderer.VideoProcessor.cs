@@ -13,6 +13,11 @@ namespace FlyleafLib.MediaFramework.MediaRenderer
 {
     public partial class Renderer
     {
+        /* TODO
+         * 1) Try to sync filters between Flyleaf and D3D11 video processors so we will not have to reset on change
+         * 2) Filter default values will change when the device/adapter is changed
+         */
+
         public bool             D3D11VPFailed       => vc == null;
         public VideoProcessors  VideoProcessor      { get => videoProcessor;    private set { SetUI(ref _VideoProcessor, value); videoProcessor = value; } }
         VideoProcessors _VideoProcessor = VideoProcessors.Flyleaf, videoProcessor = VideoProcessors.Flyleaf;
@@ -248,6 +253,7 @@ namespace FlyleafLib.MediaFramework.MediaRenderer
 
                 var cfgFilter = Config.Video.Filters[filter.Filter];
                 cfgFilter.Available = true;
+                cfgFilter.renderer = this;
 
                 if (!configLoadedChecked && !Config.Loaded)
                 {
@@ -263,11 +269,19 @@ namespace FlyleafLib.MediaFramework.MediaRenderer
 
             configLoadedChecked = true;
             UpdateBackgroundColor();
+
             if (vc != null)
             {
                 vc.VideoProcessorSetStreamAutoProcessingMode(vp, 0, false);
                 vc.VideoProcessorSetStreamFrameFormat(vp, 0, !Config.Video.Deinterlace ? VideoFrameFormat.Progressive : (Config.Video.DeinterlaceBottomFirst ? VideoFrameFormat.InterlacedBottomFieldFirst : VideoFrameFormat.InterlacedTopFieldFirst));
-            }            
+            }
+
+            // Reset FLVP filters to defaults (can be different from D3D11VP filters scaling)
+            if (videoProcessor == VideoProcessors.Flyleaf)
+            {
+                Config.Video.Filters[VideoFilters.Brightness].Value = Config.Video.Filters[VideoFilters.Brightness].Minimum + (Config.Video.Filters[VideoFilters.Brightness].Maximum - Config.Video.Filters[VideoFilters.Brightness].Minimum) / 2;
+                Config.Video.Filters[VideoFilters.Contrast].Value = Config.Video.Filters[VideoFilters.Contrast].Minimum + (Config.Video.Filters[VideoFilters.Contrast].Maximum - Config.Video.Filters[VideoFilters.Contrast].Minimum) / 2;
+            }
         }
         internal void UpdateFilterValue(VideoFilter filter)
         {
@@ -284,14 +298,14 @@ namespace FlyleafLib.MediaFramework.MediaRenderer
                 case VideoFilters.Brightness:
                     int scaledValue = (int)Utils.Scale(filter.Value, filter.Minimum, filter.Maximum, 0, 100);
                     psBufferData.brightness = scaledValue / 100.0f;
-                    context.UpdateSubresource(ref psBufferData, psBuffer);
+                    context.UpdateSubresource(psBufferData, psBuffer);
 
                     break;
 
                 case VideoFilters.Contrast:
                     scaledValue = (int)Utils.Scale(filter.Value, filter.Minimum, filter.Maximum, 0, 100);
                     psBufferData.contrast = scaledValue / 100.0f;
-                    context.UpdateSubresource(ref psBufferData, psBuffer);
+                    context.UpdateSubresource(psBufferData, psBuffer);
 
                     break;
 
@@ -323,23 +337,7 @@ namespace FlyleafLib.MediaFramework.MediaRenderer
                 if (Config.Video.VideoProcessor != VideoProcessors.Auto)
                     return;
 
-                if (Config.Video.Deinterlace)
-                {
-                    if (videoProcessor == VideoProcessors.Flyleaf && !D3D11VPFailed && VideoDecoder.VideoAccelerated)
-                    {
-                        VideoProcessor = VideoProcessors.D3D11;
-                        FrameResized();
-                    }
-                }
-                else
-                {
-                    if (videoProcessor == VideoProcessors.D3D11 && isHDR)
-                    {
-                        VideoProcessor = VideoProcessors.Flyleaf;
-                        FrameResized();
-                    }
-                }
-
+                FrameResized();
                 Present();
             }
         }
@@ -355,7 +353,7 @@ namespace FlyleafLib.MediaFramework.MediaRenderer
 
     public class VideoFilter : NotifyPropertyChanged
     {
-        internal Player player;
+        internal Renderer renderer;
 
         [XmlIgnore]
         public bool         Available   { get => _Available;set => SetUI(ref _Available, value); }
@@ -376,18 +374,10 @@ namespace FlyleafLib.MediaFramework.MediaRenderer
         public int          DefaultValue{ get => _DefaultValue; set => SetUI(ref _DefaultValue, value); }
         int _DefaultValue = 50;
 
-        public int          Value       { get => _Value;        set { if (Set(ref _Value, value)) player?.renderer?.UpdateFilterValue(this); } }
+        public int          Value       { get => _Value;        set { if (Set(ref _Value, value)) renderer?.UpdateFilterValue(this); } }
         int _Value = 50;
 
-        internal void SetValue(int value)
-        {
-            if (_Value == value)
-                return;
-
-            _Value = value;
-
-            RaiseUI(nameof(Value));
-        }
+        internal void SetValue(int value) { SetUI(ref _Value, value, true, nameof(Value)); }
 
         public VideoFilter() { }
         public VideoFilter(VideoFilters filter, Player player = null) { Filter = filter; }
