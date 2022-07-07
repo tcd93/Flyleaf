@@ -190,8 +190,7 @@ namespace FlyleafLib.MediaFramework.MediaDecoder
                 lock (lockCodecCtx)
                 {
                     if (Status == Status.Stopped || demuxer.AudioPackets.Count == 0) continue;
-                    demuxer.AudioPackets.TryDequeue(out IntPtr pktPtr);
-                    packet = (AVPacket*) pktPtr;
+                    packet = demuxer.AudioPackets.Dequeue();
 
                     if (isRecording)
                     {
@@ -228,8 +227,10 @@ namespace FlyleafLib.MediaFramework.MediaDecoder
                         ret = avcodec_receive_frame(codecCtx, frame);
                         if (ret != 0) { av_frame_unref(frame); break; }
 
-                        frame->pts = frame->best_effort_timestamp == AV_NOPTS_VALUE ? frame->pts : frame->best_effort_timestamp;
-                        if (frame->pts == AV_NOPTS_VALUE) { av_frame_unref(frame); continue; }
+                        if (frame->best_effort_timestamp != AV_NOPTS_VALUE)
+                            frame->pts = frame->best_effort_timestamp;
+                        else if (frame->pts == AV_NOPTS_VALUE)
+                            { av_frame_unref(frame); continue; }
 
                         AudioFrame mFrame = ProcessAudioFrame(frame);
                         if (mFrame != null) Frames.Enqueue(mFrame);

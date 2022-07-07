@@ -53,7 +53,7 @@ namespace FlyleafLib.MediaPlayer
             if (Config.Player.ActivityMode)
                 Activity.MouseTimestamp = DateTime.UtcNow.Ticks;
 
-            if (!Config.Player.MouseBindings.PanMoveOnDragAndCtrl || !CanPlay || e.Button != System.Windows.Forms.MouseButtons.Left)
+            if (!Config.Player.MouseBindings.PanMoveOnDragAndCtrl || e.Button != System.Windows.Forms.MouseButtons.Left)
                 return;
 
             if (panClickX == -1)
@@ -74,9 +74,9 @@ namespace FlyleafLib.MediaPlayer
             if (Config.Player.ActivityMode)
                 Activity.MouseTimestamp = DateTime.UtcNow.Ticks;
 
-            if (e.Button == System.Windows.Forms.MouseButtons.Left)
+            if (e.Button == System.Windows.Forms.MouseButtons.Left && panClickX != -1)
             {
-                if (Config.Player.MouseBindings.PanMoveOnDragAndCtrl && panClickX != -1 &&
+                if (Config.Player.MouseBindings.PanMoveOnDragAndCtrl &&
                 (Keyboard.IsKeyDown(Key.LeftCtrl) || Keyboard.IsKeyDown(Key.RightCtrl)))
                 {
                     PanXOffset = panPrevX + e.X - panClickX;

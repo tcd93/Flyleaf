@@ -36,13 +36,15 @@ namespace FlyleafLib
         public Config Clone()
         {
             Config config   = new Config();
-            config          = (Config) MemberwiseClone();
-
             config.Audio    = Audio.Clone();
             config.Video    = Video.Clone();
             config.Subtitles= Subtitles.Clone();
             config.Demuxer  = Demuxer.Clone();
             config.Decoder  = Decoder.Clone();
+            config.Player   = Player.Clone();
+
+            config.Player.config = config;
+            config.Demuxer.config = config;
 
             return config;
         }
@@ -84,12 +86,6 @@ namespace FlyleafLib
             Audio.player    = player;
             Video.player    = player;
             Subtitles.player= player;
-
-            if (Video.Filters != null)
-            {
-                foreach(var filter in Video.Filters.Values)
-                    filter.player = player;
-            }
         }
 
         /// <summary>
@@ -118,6 +114,9 @@ namespace FlyleafLib
             public PlayerConfig Clone()
             {
                 PlayerConfig player = (PlayerConfig) MemberwiseClone();
+                player.player = null;
+                player.config = null;
+                player.KeyBindings = KeyBindings.Clone();
                 return player;
             }
 
@@ -127,7 +126,7 @@ namespace FlyleafLib
             /// <summary>
             /// Whether to use Activity Mode
             /// </summary>
-            public bool     ActivityMode                { get => _ActivityMode; set { _ActivityMode = value; if (value) player?.Activity.ForceFullActive(); } }
+            public bool     ActivityMode                { get => _ActivityMode; set { _ActivityMode = value; if (player != null) { player.Activity.MouseTimestamp = DateTime.UtcNow.Ticks; player.Activity.mode = MediaPlayer.ActivityMode.FullActive; } } }
             bool _ActivityMode = false;
 
             /// <summary>
@@ -239,9 +238,6 @@ namespace FlyleafLib
         }
         public class DemuxerConfig : NotifyPropertyChanged
         {
-            internal Player player;
-            internal Config config;
-
             public DemuxerConfig Clone()
             {
                 DemuxerConfig demuxer = (DemuxerConfig) MemberwiseClone();
@@ -254,8 +250,14 @@ namespace FlyleafLib
                 foreach (var kv in AudioFormatOpt) demuxer.AudioFormatOpt.Add(kv.Key, kv.Value);
                 foreach (var kv in SubtitlesFormatOpt) demuxer.SubtitlesFormatOpt.Add(kv.Key, kv.Value);
 
+                demuxer.player = null;
+                demuxer.config = null;
+
                 return demuxer;
             }
+            
+            internal Player player;
+            internal Config config;
 
             /// <summary>
             /// Whether to enable demuxer's custom interrupt callback (for timeouts and interrupts)
@@ -290,6 +292,16 @@ namespace FlyleafLib
                 }
             }
             long _BufferDuration = 2 * 60 * (long)1000 * 10000;
+
+            /// <summary>
+            /// Maximuim allowed packets for buffering (as an extra check along with BufferDuration)
+            /// </summary>
+            public long             BufferPackets   { get; set; }
+
+            /// <summary>
+            /// Maximuim allowed audio packets (when reached it will drop the extra packets and will fire the AudioLimit event)
+            /// </summary>
+            public long             MaxAudioPackets { get; set; }
 
             /// <summary>
             /// Maximum allowed errors before stopping
@@ -352,12 +364,28 @@ namespace FlyleafLib
 
                 return defaults;
             }
+
+            public SerializableDictionary<string, string> GetFormatOptPtr(MediaType type)
+            {
+                if (type == MediaType.Video)
+                    return FormatOpt;
+                else if (type == MediaType.Audio)
+                    return AudioFormatOpt;
+                else
+                    return SubtitlesFormatOpt;
+            }
         }
         public class DecoderConfig : NotifyPropertyChanged
         {
             internal Player player;
 
-            public DecoderConfig Clone() { return (DecoderConfig) MemberwiseClone(); }
+            public DecoderConfig Clone()
+            {
+                DecoderConfig decoder = (DecoderConfig) MemberwiseClone();
+                decoder.player = null;
+
+                return decoder;
+            }
 
             /// <summary>
             /// Threads that will be used from the decoder
@@ -399,20 +427,26 @@ namespace FlyleafLib
         }
         public class VideoConfig : NotifyPropertyChanged
         {
+            public VideoConfig Clone()
+            {
+                VideoConfig video = (VideoConfig) MemberwiseClone();
+                video.player = null;
+
+                return video;
+            }
+
             internal Player player;
 
-            public VideoConfig Clone() { return (VideoConfig) MemberwiseClone(); }
-
             /// <summary>
-            /// <para>Forces the decoder/renderer to use the specified GPU adapter / device luid (available GPU adapters can be found on Engine.Video.GPUAdapters)/></para>
-            /// <para>Should be set before the decoder's initialization and it cannot be changed after</para>
+            /// <para>Forces a specific GPU Adapter to be used by the renderer</para>
+            /// <para>GPUAdapter must match with the description of the adapter eg. rx 580 (available adapters can be found in Engine.Video.GPUAdapters)</para>
             /// </summary>
-            public long             GPUAdapteLuid               { get; set; } = -1;
+            public string           GPUAdapter                  { get; set; }
 
             /// <summary>
             /// Video aspect ratio
             /// </summary>
-            public AspectRatio      AspectRatio                 { get => _AspectRatio;  set { if (Set(ref _AspectRatio, value)) player?.renderer?.SetViewport(); } }
+            public AspectRatio      AspectRatio                 { get => _AspectRatio;  set { Set(ref _AspectRatio, value); player?.renderer?.SetViewport(); } }
             AspectRatio    _AspectRatio = AspectRatio.Keep;
 
             /// <summary>
@@ -425,8 +459,13 @@ namespace FlyleafLib
             /// Background color of the player's control
             /// </summary>
             public System.Windows.Media.Color
-                                    BackgroundColor             { get => Utils.WinFormsToWPFColor(_BackgroundColor);  set { Set(ref _BackgroundColor, Utils.WPFToWinFormsColor(value)); player?.renderer?.UpdateBackgroundColor(); } }
-            internal System.Drawing.Color _BackgroundColor = System.Drawing.Color.Black;
+                                    BackgroundColor             { get => Utils.VorticeToWPFColor(_BackgroundColor);  set { Set(ref _BackgroundColor, Utils.WPFToVorticeColor(value)); player?.renderer?.UpdateBackgroundColor(); } }
+            internal Vortice.Mathematics.Color _BackgroundColor = (Vortice.Mathematics.Color)Vortice.Mathematics.Colors.Black;
+
+            /// <summary>
+            /// Delays the clear screen of the last frame until the new input has been opened
+            /// </summary>
+            public bool             ClearScreenOnOpen           { get; set; }
 
             /// <summary>
             /// Whether video should be allowed
@@ -490,14 +529,25 @@ namespace FlyleafLib
             /// <summary>
             /// The HDR to SDR method that will be used by the pixel shader
             /// </summary>
-            public unsafe HDRtoSDRMethod   HDRtoSDRMethod              { get => _HDRtoSDRMethod; set { if (Set(ref _HDRtoSDRMethod, value)) player?.renderer?.UpdateHDRtoSDR(); }}
+            public unsafe HDRtoSDRMethod
+                                    HDRtoSDRMethod              { get => _HDRtoSDRMethod; set { if (Set(ref _HDRtoSDRMethod, value)) player?.renderer?.UpdateHDRtoSDR(); }}
             HDRtoSDRMethod _HDRtoSDRMethod = HDRtoSDRMethod.Hable;
 
             /// <summary>
             /// The HDR to SDR Tone float correnction (not used by Reinhard) 
             /// </summary>
-            public unsafe float            HDRtoSDRTone                { get => _HDRtoSDRTone; set { if (Set(ref _HDRtoSDRTone, value)) player?.renderer?.UpdateHDRtoSDR(); } }
+            public unsafe float     HDRtoSDRTone                { get => _HDRtoSDRTone; set { if (Set(ref _HDRtoSDRTone, value)) player?.renderer?.UpdateHDRtoSDR(); } }
             float _HDRtoSDRTone = 1.4f;
+
+            /// <summary>
+            /// Whether the renderer will use 10-bit swap chaing or 8-bit output
+            /// </summary>
+            public bool             Swap10Bit                   { get; set; } = false;
+
+            /// <summary>
+            /// The number of buffers to use for the renderer's swap chain
+            /// </summary>
+            public int              SwapBuffers                 { get; set; } = 2;
 
             public SerializableDictionary<VideoFilters, VideoFilter> Filters {get ; set; } = DefaultFilters();
 
@@ -515,9 +565,15 @@ namespace FlyleafLib
         }
         public class AudioConfig : NotifyPropertyChanged
         {
-            internal Player player;
+            public AudioConfig Clone()
+            {
+                AudioConfig audio = (AudioConfig) MemberwiseClone();
+                audio.player = null;
 
-            public AudioConfig Clone() { return (AudioConfig) MemberwiseClone(); }
+                return audio;
+            }
+
+            internal Player player;
 
             /// <summary>
             /// Audio delay ticks (will be reseted to 0 for every new audio stream)
@@ -541,8 +597,6 @@ namespace FlyleafLib
         }
         public class SubtitlesConfig : NotifyPropertyChanged
         {
-            internal Player player;
-
             public SubtitlesConfig Clone()
             {
                 SubtitlesConfig subs = new SubtitlesConfig();
@@ -551,8 +605,12 @@ namespace FlyleafLib
                 subs.Languages = new List<Language>();
                 if (Languages != null) foreach(var lang in Languages) subs.Languages.Add(lang);
 
+                subs.player = null;
+
                 return subs;
             }
+
+            internal Player player;
 
             /// <summary>
             /// Subtitle delay ticks (will be reseted to 0 for every new subtitle stream)
@@ -571,20 +629,30 @@ namespace FlyleafLib
             /// <summary>
             /// Subtitle languages preference by priority
             /// </summary>
-            public List<Language>   Languages           { get { if (_Languages == null) _Languages = Utils.GetSystemLanguages();  return _Languages; } set { _Languages = value;} }
+            public List<Language>   Languages           { get { if (_Languages == null) _Languages = Utils.GetSystemLanguages(); return _Languages; } set { _Languages = value;} }
             List<Language> _Languages;
 
             /// <summary>
-            /// Whether to use offline (local) search plugins
+            /// Whether to use local search plugins (see also <see cref="SearchLocalOnInputType"/>)
             /// </summary>
-            public bool             UseLocalSearch  { get => _UseLocalSearch;set { Set(ref _UseLocalSearch, value); } }
-            bool    _UseLocalSearch = false;
+            public bool             SearchLocal         { get => _SearchLocal;      set { Set(ref _SearchLocal, value); } }
+            bool _SearchLocal = false;
 
             /// <summary>
-            /// Whether to use online search plugins
+            /// Allowed input types to be searched locally for subtitles (empty list allows all types)
             /// </summary>
-            public bool             UseOnlineDatabases  { get => _UseOnlineDatabases;set { Set(ref _UseOnlineDatabases, value); } }
-            bool    _UseOnlineDatabases = false;
+            public List<InputType>  SearchLocalOnInputType { get; set; } = new List<InputType>() { InputType.File, InputType.UNC, InputType.Torrent };
+
+            /// <summary>
+            /// Whether to use online search plugins (see also <see cref="SearchOnlineOnInputType"/>)
+            /// </summary>
+            public bool             SearchOnline        { get => _SearchOnline;     set { Set(ref _SearchOnline, value); } }
+            bool _SearchOnline = false;
+
+            /// <summary>
+            /// Allowed input types to be searched online for subtitles (empty list allows all types)
+            /// </summary>
+            public List<InputType>  SearchOnlineOnInputType { get; set; } = new List<InputType>() { InputType.File, InputType.Torrent };
         }
     }
 
@@ -594,11 +662,26 @@ namespace FlyleafLib
     public class EngineConfig
     {
         /// <summary>
+        /// It will not initiallize audio and will be disabled globally
+        /// </summary>
+        public bool     DisableAudio            { get; set; }
+
+        /// <summary>
         /// <para>Required to register ffmpeg libraries. Make sure you provide x86 or x64 based on your project.</para>
         /// <para>:&lt;path&gt; for relative path from current folder or any below</para>
         /// <para>&lt;path&gt; for absolute or relative path</para>
         /// </summary>
         public string   FFmpegPath              { get; set; } = "FFmpeg";
+
+        /// <summary>
+        /// <para>Whether to register av devices or not (gdigrab/dshow/etc.)</para>
+        /// <para>When enabled you can pass urls in this format device://[device_name]?[FFmpeg_Url]</para>
+        /// <para>device://gdigrab?desktop</para>
+        /// <para>device://gdigrab?title=Command Prompt</para>
+        /// <para>device://dshow?video=Lenovo Camera</para>
+        /// <para>device://dshow?audio=Microphone (Relatek):video=Lenovo Camera</para>
+        /// </summary>
+        public bool     FFmpegDevices           { get; set; }
 
         /// <summary>
         /// Sets FFmpeg logger's level
@@ -627,8 +710,8 @@ namespace FlyleafLib
 
         /// <summary>
         /// <para>Sets loggers output</para>
-        /// <para>:&lt;debug&gt; -> System.Diagnostics.Debug</para>
-        /// <para>:&lt;debug&gt; -> System.Console</para>
+        /// <para>:debug -> System.Diagnostics.Debug</para>
+        /// <para>:console -> System.Console</para>
         /// <para>&lt;path&gt; -> Absolute or relative file path</para>
         /// </summary>
         public string   LogOutput               { get => _LogOutput; set { _LogOutput = value; if (Engine.Started) Logger.SetOutput(); } }
@@ -638,6 +721,16 @@ namespace FlyleafLib
         /// Sets logger's level
         /// </summary>
         public LogLevel LogLevel                { get; set; } = LogLevel.Quiet;
+
+        /// <summary>
+        /// When the output is file it will append instead of overwriting
+        /// </summary>
+        public bool     LogAppend               { get; set; }
+
+        /// <summary>
+        /// Sets the logger's datetime string format
+        /// </summary>
+        public string   LogDateTimeFormat       { get; set; } = "HH.mm.ss.fff";
 
         /// <summary>
         /// <para>Required to register plugins. Make sure you provide x86 or x64 based on your project and same .NET framework.</para>

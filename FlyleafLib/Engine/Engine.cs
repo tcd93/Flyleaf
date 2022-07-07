@@ -2,6 +2,9 @@
 using System.Collections.Generic;
 using System.Threading;
 
+using SharpGen.Runtime;
+using Vortice.MediaFoundation;
+
 using FlyleafLib.MediaFramework.MediaRenderer;
 using FlyleafLib.MediaPlayer;
 
@@ -50,7 +53,6 @@ namespace FlyleafLib
         internal static LogHandler Log;
 
         static Thread   tMaster;
-        static bool     isCursorHidden;
         static object   lockEngine      = new object();
 
         /// <summary>
@@ -74,12 +76,18 @@ namespace FlyleafLib
 
                 Logger.SetOutput();
 
-                Log     = new LogHandler("[FlyleafEngine      ] ");
+                Log     = new LogHandler("[FlyleafEngine] ");
+                var version = System.Reflection.Assembly.GetExecutingAssembly().GetName().Version;
+                Log.Info($"FlyleafLib {version.Major }.{version.Minor}.{version.Build}");
+
                 FFmpeg  = new FFmpegEngine();
                 Video   = new VideoEngine();
                 Audio   = new AudioEngine();
                 Plugins = new PluginsEngine();
                 Players = new List<Player>();
+
+                if (Config.FFmpegDevices)
+                    EnumerateCapDevices();
 
                 Renderer.Start();
 
@@ -87,6 +95,53 @@ namespace FlyleafLib
 
                 if (Config.UIRefresh)
                     StartThread();
+            }
+        }
+
+        private unsafe static void EnumerateCapDevices()
+        {
+            try
+            {
+                string dump = null; int i = 1;
+
+                IMFAttributes capAttrs = MediaFactory.MFCreateAttributes(1);
+                IMFActivateCollection capDevices;
+
+                capAttrs.Set(CaptureDeviceAttributeKeys.SourceType, CaptureDeviceAttributeKeys.SourceTypeAudcap);
+                capDevices = MediaFactory.MFEnumDeviceSources(capAttrs);
+
+                foreach (IMFActivate capDevice in capDevices)
+                {
+                    if (i == 1) dump = "Audio Cap Devices\r\n";
+                    dump += $"[#{i}] {capDevice.FriendlyName}\r\n";
+                    i++;
+                }
+
+                if (dump != null)
+                    Log.Debug(dump);
+
+                capDevices.Dispose();
+
+                dump = null; i = 1;
+                capAttrs.Set(CaptureDeviceAttributeKeys.SourceType, CaptureDeviceAttributeKeys.SourceTypeVidcap);
+                capDevices = MediaFactory.MFEnumDeviceSources(capAttrs);
+               
+                foreach (IMFActivate capDevice in capDevices)
+                {
+                    if (i == 1) dump = "Video Cap Devices\r\n";
+                    dump += $"[#{i}] {capDevice.FriendlyName}\r\n";
+                    i++;
+                }
+
+                if (dump != null)
+                    Log.Debug(dump);
+
+                capAttrs.Dispose();
+                capDevices.Dispose();
+
+            } catch (Exception e)
+            {
+                Log.Error($"Failed to enumerate capture devices ({e.Message})");
             }
         }
 
@@ -158,8 +213,7 @@ namespace FlyleafLib
                         foreach (Player player in Players)
                         {
                             /* Every UIRefreshInterval */
-                            if (player.Config.Player.ActivityMode)
-                                player.Activity.mode = player.Activity.Check();
+                            player.Activity.RefreshMode();
 
                             /* Every Second */
                             if (curLoop == secondLoops)
@@ -171,8 +225,8 @@ namespace FlyleafLib
 
                                     var curStats = player.stats;
                                     long curTotalBytes  = player.VideoDemuxer.TotalBytes + player.AudioDemuxer.TotalBytes + player.SubtitlesDemuxer.TotalBytes;
-                                    long curVideoBytes  = player.VideoDemuxer.VideoBytes + player.AudioDemuxer.VideoBytes + player.SubtitlesDemuxer.VideoBytes;
-                                    long curAudioBytes  = player.VideoDemuxer.AudioBytes + player.AudioDemuxer.AudioBytes + player.SubtitlesDemuxer.AudioBytes;
+                                    long curVideoBytes  = player.VideoDemuxer.VideoPackets.Bytes + player.AudioDemuxer.VideoPackets.Bytes + player.SubtitlesDemuxer.VideoPackets.Bytes;
+                                    long curAudioBytes  = player.VideoDemuxer.AudioPackets.Bytes + player.AudioDemuxer.AudioPackets.Bytes + player.SubtitlesDemuxer.AudioPackets.Bytes;
 
                                     player.bitRate      = (curTotalBytes - curStats.TotalBytes) * 8 / 1000.0;
                                     player.Video.bitRate= (curVideoBytes - curStats.VideoBytes) * 8 / 1000.0;
@@ -205,21 +259,8 @@ namespace FlyleafLib
                                 /* Every UIRefreshInterval */
 
                                 // Activity Mode Refresh & Hide Mouse Cursor (FullScreen only)
-                                if (player.Activity.mode != player.Activity._Mode && (player.Config.Player.ActivityMode || isCursorHidden))
-                                {
-                                    player.Activity.Mode = player.Activity.Mode;
-
-                                    if (player.IsFullScreen && player.Activity.Mode == ActivityMode.Idle && player.Config.Player.MouseBindings.HideCursorOnFullScreenIdle)
-                                    {
-                                        while (Utils.NativeMethods.ShowCursor(false) >= 0) { }
-                                        isCursorHidden = true;
-                                    }    
-                                    else if (isCursorHidden && player.Activity.Mode == ActivityMode.FullActive)
-                                    {
-                                        while (Utils.NativeMethods.ShowCursor(true) < 0) { }
-                                        isCursorHidden = false;
-                                    }   
-                                }
+                                if (player.Activity.mode != player.Activity._Mode)
+                                    player.Activity.SetMode();                                    
 
                                 // CurTime / Buffered Duration (+Duration for HLS)
                                 if (!Config.UICurTimePerSecond)

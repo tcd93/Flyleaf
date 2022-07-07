@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Collections.ObjectModel;
 
 using Vortice.DXGI;
 
@@ -10,7 +11,12 @@ namespace FlyleafLib
     public class VideoEngine
     {
         /// <summary>
-        /// List of GPU Adpaters <see cref="Config.VideoConfig.GPUAdapteLuid"/>
+        /// List of Video Capture Devices
+        /// </summary>
+        public ObservableCollection<string> CapDevices { get; private set; } = new ObservableCollection<string>();
+
+        /// <summary>
+        /// List of GPU Adpaters <see cref="Config.VideoConfig.GPUAdapter"/>
         /// </summary>
         public Dictionary<long, GPUAdapter>  GPUAdapters { get; internal set; }
 
@@ -24,12 +30,12 @@ namespace FlyleafLib
             GPUAdapters = GetAdapters();
         }
 
-        internal Dictionary<long, GPUAdapter> GetAdapters()
+        private Dictionary<long, GPUAdapter> GetAdapters()
         {
             Dictionary<long, GPUAdapter> adapters = new Dictionary<long, GPUAdapter>();
-
+            
             string dump = "";
-            for (int adapterIndex = 0; Factory.EnumAdapters1(adapterIndex, out IDXGIAdapter1 adapter).Success; adapterIndex++)
+            for (int adapterIndex=0; Factory.EnumAdapters1(adapterIndex, out IDXGIAdapter1 adapter).Success; adapterIndex++)
             {
                 dump += $"[#{adapterIndex+1}] {RendererInfo.VendorIdStr(adapter.Description1.VendorId)} {adapter.Description1.Description} (Id: {adapter.Description1.DeviceId} | Luid: {adapter.Description1.Luid}) | DVM: {RendererInfo.GetBytesReadable(adapter.Description1.DedicatedVideoMemory)}\r\n";
 

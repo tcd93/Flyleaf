@@ -31,13 +31,13 @@ namespace FlyleafLib.Controls.WPF
             {
                 if (textBox.Text != String.Empty)
                 {
-                    Player.Playlist.AddFilter(textBox.Text);
+                    Player.MediaPlaylist.AddFilter(textBox.Text);
                     textBox.Clear();
                 }
                 e.Handled = true;
             } else if (e.Key == System.Windows.Input.Key.Back && textBox.Text == String.Empty)
             {
-                Player.Playlist.RemoveLastFilter();
+                Player.MediaPlaylist.RemoveLastFilter();
                 e.Handled = true;
             }
         }
@@ -46,7 +46,7 @@ namespace FlyleafLib.Controls.WPF
         {
             var chip = (Chip)sender;
             var deleted = ((TextBlock)chip.Content).Text;
-            Player.Playlist.Filters.Remove(deleted);
+            Player.MediaPlaylist.Filters.Remove(deleted);
         }
     }
 
