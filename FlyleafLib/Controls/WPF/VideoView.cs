@@ -363,6 +363,8 @@ namespace FlyleafLib.Controls.WPF
                     DataContext = null;
                     PlayerGrid.Children.Clear();
                     PlayerGrid = null;
+                    // FlyleafWindow.cs is no longer used in later patche (see bb1c93a99f34980b980915cf6974dbddcb5ba7c6)
+                    Properties.Settings.Default.Save(); // save settings, see https://docs.microsoft.com/en-us/archive/blogs/patrickdanino/user-settings-in-wpf
 
                 } catch (Exception e) { Debug.WriteLine("VideoView: " + e.Message); }
 
