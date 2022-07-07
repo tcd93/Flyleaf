@@ -51,7 +51,7 @@
                 <DockPanel>
                     <Button DockPanel.Dock="Right" Padding="1" MinWidth="40" Content="{materialDesign:PackIcon Kind=DotsHorizontal, Size=24}" 
                             Command="{Binding Player.Commands.OpenFromFolderDialog}"/>
-                    <TextBox x:Name="Directory" Text="{Binding Player.Playlist.Path, UpdateSourceTrigger=PropertyChanged}" Style="{StaticResource FLTextbox}" MinWidth="200"/>
+                    <TextBox x:Name="Directory" Text="{Binding Player.MediaPlaylist.Path, UpdateSourceTrigger=PropertyChanged}" Style="{StaticResource FLTextbox}" MinWidth="200"/>
                 </DockPanel>
 
                 <Border Padding="0,4,0,4">
