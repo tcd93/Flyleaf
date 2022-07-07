@@ -51,7 +51,7 @@ namespace FlyleafLib.MediaPlayer
         /// <summary>
         /// Player's current video playlist
         /// </summary>
-        public Playlist             Playlist            { get; private set; }
+        public MediaPlaylist             MediaPlaylist            { get; private set; }
 
         /// <summary>
         /// Player's Audio (In/Out)
@@ -406,7 +406,7 @@ namespace FlyleafLib.MediaPlayer
             Video       = new Video(this);
             Subtitles   = new Subtitles(this);
             Commands    = new Commands(this);
-            Playlist    = new Playlist(this);
+            MediaPlaylist = new MediaPlaylist(this);
 
             Config.SetPlayer(this);
             

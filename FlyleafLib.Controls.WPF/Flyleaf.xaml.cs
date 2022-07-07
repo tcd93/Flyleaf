@@ -536,8 +536,15 @@ namespace FlyleafLib.Controls.WPF
 
             if (result.ToString() != "cancel")
             {
-                Player.Playlist.Play();
+                Player.MediaPlaylist.Play();
             }
+        }
+
+        public ICommand OpenPlaylistViewer { get; set; }
+
+        public void OpenPlaylistViewerAction(object obj = null)
+        {
+            Player.MediaPlaylist.OpenSideView = !Player.MediaPlaylist.OpenSideView;
         }
 
         public ICommand OpenColorPicker { get; set; }

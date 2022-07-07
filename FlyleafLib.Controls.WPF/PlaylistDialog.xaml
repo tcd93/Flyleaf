@@ -27,7 +27,7 @@
                 <Setter Property="Margin" Value="0 0 10 0"/>
                 <Setter Property="IsEnabled" Value="True"/>
                 <Style.Triggers>
-                    <DataTrigger Binding="{Binding Player.Playlist.Path}" Value="{x:Static sys:String.Empty}">
+                    <DataTrigger Binding="{Binding Player.MediaPlaylist.Path}" Value="{x:Static sys:String.Empty}">
                         <Setter Property="IsEnabled" Value="False"/>
                     </DataTrigger>
                 </Style.Triggers>
@@ -51,7 +51,7 @@
                 <Border BorderThickness="1" BorderBrush="{DynamicResource PrimaryHueMidBrush}" Padding="0,4,0,4">
                     <ItemsControl ScrollViewer.HorizontalScrollBarVisibility="Disabled">
                         <ItemsControl.Resources>
-                            <CollectionViewSource x:Key="source_workaround" Source="{Binding Player.Playlist.Filters}" />
+                            <CollectionViewSource x:Key="source_workaround" Source="{Binding Player.MediaPlaylist.Filters}" />
                             
                             <DataTemplate DataType="{x:Type sys:String}">
                                 <materialDesign:Chip IsDeletable="True" DeleteClick="Chip_DeleteClick">

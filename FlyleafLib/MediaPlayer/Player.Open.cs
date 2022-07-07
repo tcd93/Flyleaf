@@ -360,7 +360,7 @@ namespace FlyleafLib.MediaPlayer
         }
 
         /// <summary>
-        /// Opens a playlist item <see cref="Playlist.Items"/>
+        /// Opens a playlist item <see cref="MediaPlaylist.Items"/>
         /// </summary>
         /// <param name="item">The playlist item to open</param>
         /// <param name="defaultVideo">Whether to open the default video stream from plugin suggestions</param>
@@ -426,7 +426,7 @@ namespace FlyleafLib.MediaPlayer
         }
         
         /// <summary>
-        /// Opens a playlist item <see cref="Playlist.Items"/> without blocking
+        /// Opens a playlist item <see cref="MediaPlaylist.Items"/> without blocking
         /// You can get the results from <see cref="OpenPlaylistItemCompleted"/>
         /// </summary>
         /// <param name="item">The playlist item to open</param>

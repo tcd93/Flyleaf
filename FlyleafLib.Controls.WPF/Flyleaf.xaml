@@ -41,7 +41,11 @@
                                 <!--Pop Up Dialog (Settings/Set Values)-->
                                 <materialDesign:DialogHost x:Name="PART_DialogSettings" OverlayBackground="{x:Null}"/>
                                 <materialDesign:DialogHost x:Name="PART_PlaylistDialog" OverlayBackground="{x:Null}"/>
-                                
+                                <local:PlaylistViewer HorizontalAlignment="Left" 
+                                                      CurrentItem="{Binding Player.MediaPlaylist.Current}"
+                                                      ItemsSource="{Binding Player.MediaPlaylist.Items}"
+                                                      IsOpen="{Binding Player.MediaPlaylist.OpenSideView}" />
+
                                 <!--Debug Info-->
                                 <fl:PlayerDebug d:Visibility="Hidden" VerticalAlignment="Center" HorizontalAlignment="Center" Player="{Binding Player}" BoxColor="#AA000000" HeaderColor="White" InfoColor="{DynamicResource PrimaryHueLightBrush}" ValueColor="{DynamicResource SecondaryHueLightBrush}" Visibility="{Binding ShowDebug, Converter={StaticResource BooleanToVisibility}}"/>
 

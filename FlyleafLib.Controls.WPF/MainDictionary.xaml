@@ -699,6 +699,18 @@
     <ContextMenu x:Key="PopUpMenu">
         <MenuItem Header="Open File" Command="{Binding OpenFileDialog}" Icon="{materialDesign:PackIcon FolderOutline}"/>
         <MenuItem Header="Open Folder" Icon="{materialDesign:PackIcon FolderOutline}" Command="{Binding OpenPlaylistDialog}" />
+        <MenuItem Header="Playlist" Icon="{materialDesign:PackIcon RestaurantMenu}" Command="{Binding OpenPlaylistViewer}">
+            <MenuItem.Style>
+                <Style TargetType="{x:Type MenuItem}" BasedOn="{StaticResource MaterialDesignMenuItem}">
+                    <Setter Property="Visibility" Value="Visible" />
+                    <Style.Triggers>
+                        <DataTrigger Binding="{Binding Player.MediaPlaylist.Current}" Value="">
+                            <Setter Property="Visibility" Value="Collapsed"/>
+                        </DataTrigger>
+                    </Style.Triggers>
+                </Style>
+            </MenuItem.Style>
+        </MenuItem>
         <MenuItem Header="Paste Url" Command="{Binding Player.Commands.OpenFromClipboard}" IsEnabled="{Binding CanPaste}" Icon="{materialDesign:PackIcon ContentPaste}"/>
         <Separator />
 

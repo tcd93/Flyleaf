@@ -442,10 +442,10 @@ namespace FlyleafLib.MediaPlayer
                     return player.Play;
 
                 case KeyBindingAction.PlayNext:
-                    return player.Playlist.PlayNext;
+                    return player.MediaPlaylist.PlayNext;
 
                 case KeyBindingAction.PlayPrevious:
-                    return player.Playlist.PlayPrevious;
+                    return player.MediaPlaylist.PlayPrevious;
 
                 case KeyBindingAction.TogglePlayPause:
                     return player.TogglePlayPause;
@@ -578,6 +578,7 @@ namespace FlyleafLib.MediaPlayer
 
         CopyToClipboard, CopyItemToClipboard, OpenFromClipboard, OpenFromFileDialog, OpenFromFolderDialog,
         Stop, Pause, Play, TogglePlayPause, ToggleReversePlayback, Flush,
+        PlayNext, PlayPrevious,
         TakeSnapshot,
         NormalScreen, FullScreen, ToggleFullScreen,
 

@@ -6,7 +6,7 @@ using System.ComponentModel;
 
 namespace FlyleafLib.MediaPlayer
 {
-    public class Playlist : INotifyPropertyChanged
+    public class MediaPlaylist : INotifyPropertyChanged
     {
         private readonly Player player;
 
@@ -30,10 +30,10 @@ namespace FlyleafLib.MediaPlayer
 
         public ObservableCollection<string> Filters { get; set; } = new();
 
-        public Playlist(Player player)
+        public MediaPlaylist(Player player)
         {
             this.player = player;
-            this.player.PlaybackCompleted += PlaybackCompleted;
+            this.player.PlaybackStopped += PlaybackStopped;
         }
 
         public void AddFilter(string filter)
@@ -69,9 +69,9 @@ namespace FlyleafLib.MediaPlayer
             }
         }
 
-        private void PlaybackCompleted(object sender, PlaybackCompletedArgs e)
+        private void PlaybackStopped(object sender, PlaybackStoppedArgs e)
         {
-            if (playlist.Count > 0)
+            if (playlist.Count > 0 && player.Status == Status.Ended)
             {
                 PlayNext();
             }
