@@ -92,6 +92,14 @@ namespace FlyleafLib.MediaPlayer
             }
         }
 
+        public void ToggleSideView()
+        {
+            if (playlist is not null && playlist.Count > 0)
+            {
+                OpenSideView = !OpenSideView;
+            }
+        }
+
         public void Play()
         {
             playlist = Utils.FindMovFilesInPath(_path)

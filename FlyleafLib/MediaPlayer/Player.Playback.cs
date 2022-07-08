@@ -136,6 +136,14 @@ namespace FlyleafLib.MediaPlayer
         }
 
         /// <summary>
+        /// Play & skip until last 10% of the media duration
+        /// </summary>
+        public void PlayToNearEnd()
+        {
+            SeekAccurate((int)(Duration * 9 / 10) / 10000);
+        }
+
+        /// <summary>
         /// Pauses AVS streams
         /// </summary>
         public void Pause()
