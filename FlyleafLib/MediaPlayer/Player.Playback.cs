@@ -140,7 +140,10 @@ namespace FlyleafLib.MediaPlayer
         /// </summary>
         public void PlayToNearEnd()
         {
-            SeekAccurate((int)(Duration * 9 / 10) / 10000);
+            if (Duration < long.MaxValue)
+            {
+                SeekAccurate(Convert.ToInt32(Duration * 9 / 10 / 10000));
+            }
         }
 
         /// <summary>
