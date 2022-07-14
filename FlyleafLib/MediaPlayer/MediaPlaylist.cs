@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Linq;
 using System.ComponentModel;
+using System.IO;
 
 namespace FlyleafLib.MediaPlayer
 {
@@ -124,17 +125,7 @@ namespace FlyleafLib.MediaPlayer
             {
                 foreach (string changedItem in e.OldItems)
                 {
-                    if (Current == changedItem)
-                    {
-                        PlayNext();
-                    }
-                    Microsoft.VisualBasic.FileIO.FileSystem.DeleteFile(changedItem,
-                            Microsoft.VisualBasic.FileIO.UIOption.OnlyErrorDialogs,
-                            Microsoft.VisualBasic.FileIO.RecycleOption.SendToRecycleBin,
-                            Microsoft.VisualBasic.FileIO.UICancelOption.DoNothing);
-
-                    playlist.Remove(changedItem);
-                    previous.Remove(changedItem);
+                    DeleteItem(changedItem);
                 }
             }
         }
@@ -145,6 +136,44 @@ namespace FlyleafLib.MediaPlayer
             {
                 PlayNext();
             }
+        }
+
+        public void DeleteCurrentItem()
+        {
+            player.Log.Debug("DeleteCurrentItem");
+            if (playlist.Count > 0 && Current is not null)
+            {
+                System.Windows.MessageBoxResult messageBoxResult = 
+                    System.Windows.MessageBox.Show($"Delete {System.IO.Path.GetFileName(Current)}?", "Delete Confirmation", System.Windows.MessageBoxButton.YesNo);
+                if (messageBoxResult == System.Windows.MessageBoxResult.Yes)
+                {
+                    DeleteItem(Current);
+                }
+            }
+        }
+
+        /// <summary>
+        /// Delete an item from playlist, physically moves to recycle bin
+        /// </summary>
+        /// <param name="item">The <b>full path</b> to the media</param>
+        public void DeleteItem(string item)
+        {
+            if (!File.Exists(item))
+            {
+                player.Log.Warn($"{item} does not exist for delete");
+                return;
+            }
+            if (Current == item)
+            {
+                PlayNext();
+            }
+            Microsoft.VisualBasic.FileIO.FileSystem.DeleteFile(item,
+                    Microsoft.VisualBasic.FileIO.UIOption.OnlyErrorDialogs,
+                    Microsoft.VisualBasic.FileIO.RecycleOption.SendToRecycleBin,
+                    Microsoft.VisualBasic.FileIO.UICancelOption.DoNothing);
+
+            playlist.Remove(item);
+            previous.Remove(item);
         }
 
         public void PlayNext()
